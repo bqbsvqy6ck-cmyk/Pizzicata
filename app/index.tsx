@@ -14,8 +14,8 @@ const C = {
 
 const MENU = {
   'Pizze Rosse': [
-    { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.00 },
-    { id: 2, name: 'Marinara', desc: "Pomodoro, Olio all'aglio, Origano", price: 5.00 },
+    { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.50 },
+    { id: 2, name: 'Marinara', desc: "Pomodoro, Olio all'aglio, Origano", price: 5.50 },
     { id: 3, name: 'Calabrese', desc: 'Pomodoro, Mozzarella, Scamorza, Soppressata', price: 8.50 },
     { id: 4, name: 'Capricciosa', desc: 'Pomodoro, Mozzarella, Cotto, Olive, Salamino, Carciofi', price: 8.50 },
     { id: 5, name: 'Carminello', desc: 'Pomodoro, Mozzarella, Funghi, Salsiccia, Fontina, Bacon', price: 9.00 },
@@ -36,131 +36,135 @@ const MENU = {
     { id: 20, name: 'Vegetariana', desc: 'Pomodoro, Mozzarella, Verdure, Grana', price: 8.00 },
   ],
   'Pizze Bianche': [
-    { id: 21, name: 'Certosino', desc: 'Mozzarella, Certosino', price: 7.00 },
-    { id: 22, name: '4 Stagioni', desc: 'Mozzarella, Cotto, Olive, Carciofi, Funghi', price: 8.00 },
-    { id: 23, name: 'Bufala', desc: 'Mozzarella di Bufala, Pomodorini, Origano', price: 8.50 },
-    { id: 24, name: 'Campagnola', desc: 'Mozzarella, Fontina, Salsiccia, Zucchine, Grana', price: 8.50 },
-    { id: 25, name: 'Ghiottona', desc: 'Mozzarella, Salsiccia, Grana, Verdure, Bacon', price: 9.00 },
-    { id: 26, name: 'Giambone', desc: 'Mozzarella, Pomodorini, Tonno, Zucchine, Cipolla, Rucola, Grana', price: 9.00 },
-    { id: 27, name: 'Golden', desc: 'Mozzarella, Cipolla, Funghi, Salsiccia, Grana, Olio al tartufo', price: 10.50 },
-    { id: 28, name: 'Nduja Bianca', desc: "Mozzarella, Nduja, Salsiccia, Cipolla, Basilico", price: 9.00 },
-    { id: 29, name: 'Nonno Federico', desc: 'Mozzarella, Gorgonzola, Cipolla, Salsiccia, Peperoni, Uovo', price: 9.00 },
-    { id: 30, name: 'Nova', desc: 'Mozzarella, Salsiccia, Burrata', price: 10.00 },
-    { id: 31, name: 'Ortolana', desc: 'Mozzarella, Pomodorini, Peperoni, Melanzane, Zucchine, Cipolla', price: 8.00 },
-    { id: 32, name: 'Saporita', desc: 'Mozzarella, Funghi, Scamorza', price: 8.50 },
-    { id: 33, name: 'Sfiziosa', desc: 'Mozzarella, Certosino, Salsiccia, Salsa', price: 8.50 },
-    { id: 34, name: 'Simpatica', desc: 'Mozzarella, Funghi, Olive, Fontina, Gorgo', price: 8.50 },
+    { id: 21, name: 'Biancaneve', desc: ' Mozzarella', price: 6.00 },
+    { id: 22, name: 'Certosino', desc: 'Mozzarella, Certosino', price: 7.00 },
+    { id: 23, name: '4 Stagioni', desc: 'Mozzarella, Cotto, Olive, Carciofi, Funghi', price: 8.00 },
+    { id: 24, name: 'Bufala', desc: 'Mozzarella di Bufala, Pomodorini, Origano', price: 8.50 },
+    { id: 25, name: 'Campagnola', desc: 'Mozzarella, Fontina, Salsiccia, Zucchine, Grana', price: 8.50 },
+    { id: 26, name: 'Ghiottona', desc: 'Mozzarella, Salsiccia, Grana, Verdure, Bacon', price: 9.00 },
+    { id: 27, name: 'Giambone', desc: 'Mozzarella, Pomodorini, Tonno, Zucchine, Cipolla, Rucola, Grana', price: 9.00 },
+    { id: 28, name: 'Golden', desc: 'Mozzarella, Cipolla, Funghi, Salsiccia, Grana, Olio al tartufo', price: 10.50 },
+    { id: 29, name: 'Nduja Bianca', desc: "Mozzarella, Nduja, Salsiccia, Cipolla, Basilico", price: 9.00 },
+    { id: 30, name: 'Nonno Federico', desc: 'Mozzarella, Gorgonzola, Cipolla, Salsiccia, Peperoni, Uovo', price: 9.00 },
+    { id: 31, name: 'Nova', desc: 'Mozzarella, Salsiccia, Burrata', price: 10.00 },
+    { id: 32, name: 'Ortolana', desc: 'Mozzarella, Pomodorini, Peperoni, Melanzane, Zucchine, Cipolla', price: 8.00 },
+    { id: 33, name: 'Saporita', desc: 'Mozzarella, Funghi, Scamorza', price: 8.50 },
+    { id: 34, name: 'Sfiziosa', desc: 'Mozzarella, Certosino, Salsiccia, Salsa', price: 8.50 },
+    { id: 35, name: 'Simpatica', desc: 'Mozzarella, Funghi, Olive, Fontina, Gorgo', price: 8.50 },
   ],
   'Pizze Speciali': [
-    { id: 35, name: '3 Porcellini', desc: 'Pomodoro, Mozzarella, Wurstel, Salsiccia, Salamino', price: 9.00 },
-    { id: 36, name: 'Bismark', desc: 'Pomodoro, Mozzarella, Bacon, Salsiccia, Patatine, Salsa Burger', price: 9.50 },
-    { id: 37, name: 'Boscaiola', desc: 'Pomodoro, Mozzarella, Cotto, Scamorza, Salsiccia, Grana', price: 9.00 },
-    { id: 38, name: 'Gourmet', desc: 'Funghi, Cipolla, Carciofi, Certosino, Olio al tartufo, Grana', price: 10.50 },
-    { id: 39, name: 'Gustosa', desc: 'Pomodorini, Mozzarella, Salsiccia, Salamino, Olive, Bacon', price: 9.00 },
-    { id: 40, name: 'La 4 Mori', desc: 'Mozzarella, Pomodorini, Salsiccia, Grana', price: 8.50 },
+    { id: 36, name: '3 Porcellini', desc: 'Pomodoro, Mozzarella, Wurstel, Salsiccia, Salamino', price: 9.00 },
+    { id: 37, name: 'Bismark', desc: 'Pomodoro, Mozzarella, Bacon, Salsiccia, Patatine, Salsa Burger', price: 9.50 },
+    { id: 38, name: 'Boscaiola', desc: 'Pomodoro, Mozzarella, Cotto, Scamorza, Salsiccia, Grana', price: 9.00 },
+    { id: 39, name: 'Gourmet', desc: 'Funghi, Cipolla, Carciofi, Certosino, Olio al tartufo, Grana', price: 10.50 },
+    { id: 40, name: 'Gustosa', desc: 'Pomodorini, Mozzarella, Salsiccia, Salamino, Olive, Bacon', price: 9.00 },
+    { id: 41, name: 'La 4 Mori', desc: 'Mozzarella, Pomodorini, Salsiccia, Grana', price: 8.50 },
   ],
   'Limited Edition': [
-    { id: 41, name: 'Elio', desc: 'Pomodoro, Mozzarella, Salsiccia, Gorgonzola, Zucchine', price: 7.00 },
-    { id: 42, name: 'Yammie-Ja', desc: 'Crema di Cipolla, Mozzarella, Salsiccia, Bacon, Nduja', price: 11.00 },
-    { id: 43, name: 'Gioia', desc: 'Mozzarella, Pomodorini, Crocchette, Bacon, Grana, Scamorza, Nduja', price: 12.00 },
-    { id: 44, name: 'A Pork', desc: 'Mozzarella, Cipolla, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
-    { id: 45, name: 'Primavera', desc: 'Mozzarella, Zucchine, Melanzane, Peperoni, Tonno, Grana', price: 12.00 },
-    { id: 46, name: 'Supernova', desc: 'Pomodoro, Soppressata, Salsiccia, Nduja, Burrata', price: 12.00 },
+    { id: 42, name: 'Elio', desc: 'Pomodoro, Mozzarella, Salsiccia, Gorgonzola, Zucchine', price: 7.00 },
+    { id: 43, name: 'Yammie-Ja', desc: 'Crema di Cipolla, Mozzarella, Salsiccia, Bacon, Nduja', price: 11.00 },
+    { id: 44, name: 'Gioia', desc: 'Mozzarella, Pomodorini, Crocchette, Bacon, Grana, Scamorza, Nduja', price: 12.00 },
+    { id: 45, name: 'A Pork', desc: 'Mozzarella, Cipolla, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
+    { id: 46, name: 'Primavera', desc: 'Mozzarella, Zucchine, Melanzane, Peperoni, Tonno, Grana', price: 12.00 },
+    { id: 47, name: 'Supernova', desc: 'Pomodoro, Soppressata, Salsiccia, Nduja, Burrata', price: 12.00 },
   ],
   'Focacce': [
-    { id: 47, name: 'Balsamica', desc: 'Certosino, Rucola, Pomodorini, Grana, Speck, Glassa balsamica', price: 10.50 },
-    { id: 48, name: 'Burrata', desc: 'Pomodorini, Rucola, Crudo, Burrata, Grana, Olio EVO', price: 12.50 },
-    { id: 49, name: 'Bruschetta', desc: 'Pomodorini, Olio, Sale, Origano, Basilico', price: 6.50 },
-    { id: 50, name: 'Italia', desc: 'Pomodorini, Rucola, Bufala', price: 8.50 },
-    { id: 51, name: 'Prosciutto Crudo', desc: '', price: 7.50 },
-    { id: 52, name: 'Speck', desc: '', price: 7.00 },
-    { id: 53, name: 'Tropea', desc: 'Pomodorini, Cipolla, Olio, Sale, Origano', price: 7.00 },
-    { id: 54, name: 'Montebianco', desc: 'Pomodorini, Rucola, Crudo, Bufala, Grana, Olio EVO', price: 10.00 },
+    { id: 48, name: 'Balsamica', desc: 'Certosino, Rucola, Pomodorini, Grana, Speck, Glassa balsamica', price: 10.50 },
+    { id: 49, name: 'Burrata', desc: 'Pomodorini, Rucola, Crudo, Burrata, Grana, Olio EVO', price: 12.50 },
+    { id: 50, name: 'Bruschetta', desc: 'Pomodorini, Olio, Sale, Origano, Basilico', price: 6.50 },
+    { id: 51, name: 'Italia', desc: 'Pomodorini, Rucola, Bufala', price: 8.50 },
+    { id: 52, name: 'Prosciutto Crudo', desc: '', price: 7.50 },
+    { id: 53, name: 'Speck', desc: '', price: 7.00 },
+    { id: 54, name: 'Tropea', desc: 'Pomodorini, Cipolla, Olio, Sale, Origano', price: 7.00 },
+    { id: 55, name: 'Montebianco', desc: 'Pomodorini, Rucola, Crudo, Bufala, Grana, Olio EVO', price: 10.00 },
   ],
   'Calzoni': [
-    { id: 55, name: 'Calzone della Casa', desc: 'Pomodoro, Mozzarella di Bufala, Cotto, Grana', price: 9.00 },
-    { id: 56, name: 'Calzone Doppio', desc: 'Pomodoro, Bufala, Gorgonzola, Cipolla, Cotto, Funghi', price: 12.50 },
-    { id: 57, name: 'Calzone Goloso', desc: 'Pomodoro, Bufala, Friarielli, Soppressata', price: 9.00 },
-    { id: 58, name: 'Calzone Gustoso', desc: 'Pomodoro, Bufala, Scamorza, Friarielli', price: 9.00 },
+    { id: 56, name: 'Calzone della Casa', desc: 'Pomodoro, Mozzarella di Bufala, Cotto, Grana', price: 9.00 },
+    { id: 57, name: 'Calzone Doppio', desc: 'Pomodoro, Bufala, Gorgonzola, Cipolla, Cotto, Funghi', price: 12.50 },
+    { id: 58, name: 'Calzone Goloso', desc: 'Pomodoro, Bufala, Friarielli, Soppressata', price: 9.00 },
+    { id: 59, name: 'Calzone Gustoso', desc: 'Pomodoro, Bufala, Scamorza, Friarielli', price: 9.00 },
   ],
   'Panuozzi': [
-    { id: 59, name: 'U Pork', desc: 'Cipolla, Pomodorini, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
-    { id: 60, name: 'Americano', desc: 'Wurstel, Patatine, Ketchup, Maionese', price: 10.00 },
-    { id: 61, name: 'Balsamico', desc: 'Speck, Rucola, Certosino, Aceto Balsamico', price: 10.00 },
-    { id: 62, name: 'Boscaiolo', desc: 'Funghi, Bacon, Salsiccia, Salsa BBQ', price: 10.00 },
-    { id: 63, name: 'Calabrese', desc: 'Scamorza, Soppressata, Nduja, Pomodorini, Cipolla', price: 10.00 },
-    { id: 64, name: 'Classico', desc: 'Salsiccia, Friarielli, Scamorza', price: 10.00 },
-    { id: 65, name: 'Estivo', desc: 'Prosciutto Crudo, Burrata', price: 10.00 },
-    { id: 66, name: 'Fresco', desc: 'Prosciutto Crudo, Insalata, Pomodorini, Bufala', price: 10.00 },
-    { id: 67, name: 'Hamburger', desc: 'Hamburger di Fassona, Maionese e Ketchup', price: 10.00 },
-    { id: 68, name: 'Mediterraneo', desc: 'Tonno, Pomodorini, Carciofi, Maionese', price: 10.00 },
-    { id: 69, name: 'Porcaro', desc: 'Salsiccia, Peperoni, Salsa Hamburger', price: 10.00 },
-    { id: 70, name: 'Valdostano', desc: 'Cotto, Fontina, Mozzarella, Maionese', price: 10.00 },
-    { id: 71, name: 'Vegetariano', desc: 'Funghi, Peperoni, Melanzane, Friarielli', price: 10.00 },
+    { id: 60, name: 'U Pork', desc: 'Cipolla, Pomodorini, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
+    { id: 61, name: 'Americano', desc: 'Wurstel, Patatine, Ketchup, Maionese', price: 10.00 },
+    { id: 62, name: 'Balsamico', desc: 'Speck, Rucola, Certosino, Aceto Balsamico', price: 10.00 },
+    { id: 63, name: 'Boscaiolo', desc: 'Funghi, Bacon, Salsiccia, Salsa BBQ', price: 10.00 },
+    { id: 64, name: 'Calabrese', desc: 'Scamorza, Soppressata, Nduja, Pomodorini, Cipolla', price: 10.00 },
+    { id: 65, name: 'Classico', desc: 'Salsiccia, Friarielli, Scamorza', price: 10.00 },
+    { id: 66, name: 'Estivo', desc: 'Prosciutto Crudo, Burrata', price: 10.00 },
+    { id: 67, name: 'Fresco', desc: 'Prosciutto Crudo, Insalata, Pomodorini, Bufala', price: 10.00 },
+    { id: 68, name: 'Hamburger', desc: 'Hamburger di Fassona, Maionese e Ketchup', price: 10.00 },
+    { id: 69, name: 'Mediterraneo', desc: 'Tonno, Pomodorini, Carciofi, Maionese', price: 10.00 },
+    { id: 70, name: 'Porcaro', desc: 'Salsiccia, Peperoni, Salsa Hamburger', price: 10.00 },
+    { id: 71, name: 'Valdostano', desc: 'Cotto, Fontina, Mozzarella, Maionese', price: 10.00 },
+    { id: 72, name: 'Vegetariano', desc: 'Funghi, Peperoni, Melanzane, Friarielli', price: 10.00 },
   ],
   'Hamburger': [
-    { id: 72, name: 'Capo', desc: 'Hamburger, Lattuga, Pomodoro, Cipolla, Fontina, Bacon, BBQ', price: 10.00 },
-    { id: 73, name: 'Ciccio', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Bacon, Ketchup, Mayonese', price: 10.00 },
-    { id: 74, name: 'Fanalino di Coda', desc: 'Hamburger, Soppressata, Peperoni, Cipolla, Fontina, Lattuga, BBQ', price: 12.00 },
-    { id: 75, name: 'Il Lordone', desc: 'Doppio Hamburger, Doppio Cheddar, Bacon, Lattuga, Salsa Pizzicata', price: 18.00 },
-    { id: 76, name: 'Ultra Pork Burger', desc: 'Hamburger di Fasona, Pulled Pork, Doppio Bacon, Doppio Cheddar, BBQ', price: 20.00 },
-    { id: 77, name: 'Menu Panino', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Ketchup + patatine e bibita', price: 14.00 },
+    { id: 73, name: 'Capo', desc: 'Hamburger, Lattuga, Pomodoro, Cipolla, Fontina, Bacon, BBQ', price: 10.00 },
+    { id: 74, name: 'Ciccio', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Bacon, Ketchup, Mayonese', price: 10.00 },
+    { id: 75, name: 'Fanalino di Coda', desc: 'Hamburger, Soppressata, Peperoni, Cipolla, Fontina, Lattuga, BBQ', price: 12.00 },
+    { id: 76, name: 'Il Lordone', desc: 'Doppio Hamburger, Doppio Cheddar, Bacon, Lattuga, Salsa Pizzicata', price: 18.00 },
+    { id: 77, name: 'Ultra Pork Burger', desc: 'Hamburger di Fasona, Pulled Pork, Doppio Bacon, Doppio Cheddar, BBQ', price: 20.00 },
+    { id: 78, name: 'Menu Panino', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Ketchup + patatine e bibita', price: 14.00 },
   ],
   'Farinata': [
-    { id: 78, name: 'Classica', desc: '', price: 3.50 },
-    { id: 79, name: 'con Burrata', desc: '', price: 7.00 },
-    { id: 80, name: 'al Lardo', desc: '', price: 5.00 },
-    { id: 81, name: 'ai Formaggi', desc: '', price: 5.00 },
-    { id: 82, name: 'Cotto e Mozzarella', desc: '', price: 5.00 },
-    { id: 83, name: 'Fontina e Soppressata', desc: '', price: 5.00 },
-    { id: 84, name: 'Friarielli e Salsiccia', desc: '', price: 5.00 },
-    { id: 85, name: 'Gorgo e Cipolla', desc: '', price: 5.00 },
-    { id: 86, name: 'con Mortadella', desc: '', price: 5.00 },
-    { id: 87, name: 'Scamorza e Salamino', desc: '', price: 5.00 },
-    { id: 88, name: 'Fargherita', desc: 'Pomodoro e Mozzarella', price: 5.00 },
+    { id: 79, name: 'Classica', desc: '', price: 3.50 },
+    { id: 80, name: 'con Burrata', desc: '', price: 7.00 },
+    { id: 81, name: 'al Lardo', desc: '', price: 5.00 },
+    { id: 82, name: 'ai Formaggi', desc: '', price: 5.00 },
+    { id: 83, name: 'Cotto e Mozzarella', desc: '', price: 5.00 },
+    { id: 84, name: 'Fontina e Soppressata', desc: '', price: 5.00 },
+    { id: 85, name: 'Friarielli e Salsiccia', desc: '', price: 5.00 },
+    { id: 86, name: 'Gorgo e Cipolla', desc: '', price: 5.00 },
+    { id: 87, name: 'con Mortadella', desc: '', price: 5.00 },
+    { id: 88, name: 'Scamorza e Salamino', desc: '', price: 5.00 },
+    { id: 89, name: 'Fargherita', desc: 'Pomodoro e Mozzarella', price: 5.00 },
   ],
   'Fritti': [
-    { id: 89, name: 'Chiacchiere Semplici', desc: 'Chiacchiere Napoletane', price: 4.00 },
-    { id: 90, name: 'Chiacchiere al Crudo', desc: '', price: 7.00 },
-    { id: 91, name: 'Chiacchiere al Sugo', desc: '', price: 5.50 },
-    { id: 92, name: 'Chiacchiere con Burrata', desc: '', price: 9.00 },
-    { id: 93, name: 'Chiacchiere Tris', desc: 'Cotto, Crudo e Mortadella', price: 8.00 },
-    { id: 94, name: 'Crocchette di Patate', desc: '8 pezzi', price: 4.00 },
-    { id: 95, name: "Olive all'Ascolana", desc: '9 pezzi', price: 4.50 },
-    { id: 96, name: 'Nuggets di Pollo', desc: '8 pezzi', price: 7.00 },
-    { id: 97, name: 'Panelle', desc: '8 pezzi', price: 5.00 },
-    { id: 98, name: 'Patatine Fritte', desc: 'Porzione', price: 4.00 },
-    { id: 99, name: 'Scugnizzi Fritti', desc: 'Ripieni di Speck e Formaggio', price: 4.00 },
-    { id: 100, name: 'Suppli Romani', desc: '', price: 7.00 },
+    { id: 90, name: 'Chiacchiere Semplici', desc: 'Chiacchiere Napoletane', price: 4.00 },
+    { id: 91, name: 'Chiacchiere al Crudo', desc: '', price: 7.00 },
+    { id: 92, name: 'Chiacchiere al Sugo', desc: '', price: 5.50 },
+    { id: 93, name: 'Chiacchiere con Burrata', desc: '', price: 9.00 },
+    { id: 94, name: 'Chiacchiere Tris', desc: 'Cotto, Crudo e Mortadella', price: 8.00 },
+    { id: 95, name: 'Crocchette di Patate', desc: '8 pezzi', price: 4.00 },
+    { id: 96, name: "Olive all'Ascolana", desc: '9 pezzi', price: 4.50 },
+    { id: 97, name: 'Nuggets di Pollo', desc: '8 pezzi', price: 7.00 },
+    { id: 98, name: 'Panelle', desc: '8 pezzi', price: 5.00 },
+    { id: 99, name: 'Patatine Fritte', desc: 'Porzione', price: 4.00 },
+    { id: 100, name: 'Scugnizzi Fritti', desc: 'Ripieni di Speck e Formaggio', price: 4.00 },
+    { id: 101, name: 'Suppli Romani', desc: '', price: 7.00 },
   ],
   'Dolci': [
-    { id: 101, name: 'Cannoli Siciliani', desc: '', price: 4.00 },
-    { id: 102, name: 'Cheesecake alla Fragola', desc: '', price: 4.00 },
-    { id: 103, name: 'Chiacchiere con Zucchero', desc: '', price: 5.00 },
-    { id: 104, name: 'Chiacchiere con Nutella', desc: '', price: 6.00 },
-    { id: 105, name: 'Focaccia alla Nutella', desc: '', price: 7.00 },
-    { id: 106, name: 'Profiterol', desc: '', price: 4.00 },
-    { id: 107, name: 'Semifreddo al Cocco', desc: '', price: 4.50 },
-    { id: 108, name: 'Sorbetto al Limone', desc: '', price: 4.50 },
-    { id: 109, name: 'Tiramisu', desc: '', price: 4.50 },
-    { id: 110, name: 'Tortino Ricotta e Cioccolato', desc: '', price: 4.50 },
-    { id: 111, name: 'Tortino Ricotta e Pere', desc: '', price: 4.00 },
-    { id: 112, name: 'Zuppa Inglese', desc: '', price: 3.50 },
+    { id: 102, name: 'Cannoli Siciliani', desc: '', price: 4.00 },
+    { id: 103, name: 'Cheesecake alla Fragola', desc: '', price: 4.00 },
+    { id: 104, name: 'Chiacchiere con Zucchero', desc: '', price: 5.00 },
+    { id: 105, name: 'Chiacchiere con Nutella', desc: '', price: 6.00 },
+    { id: 106, name: 'Focaccia alla Nutella', desc: '', price: 7.00 },
+    { id: 107, name: 'Profiterol', desc: '', price: 4.00 },
+    { id: 108, name: 'Semifreddo al Cocco', desc: '', price: 4.50 },
+    { id: 109, name: 'Sorbetto al Limone', desc: '', price: 4.50 },
+    { id: 110, name: 'Tiramisu', desc: '', price: 4.50 },
+    { id: 111, name: 'Tortino Ricotta e Cioccolato', desc: '', price: 4.50 },
+    { id: 112, name: 'Tortino Ricotta e Pere', desc: '', price: 4.00 },
+    { id: 113, name: 'Zuppa Inglese', desc: '', price: 3.50 },
   ],
   'Bevande': [
-    { id: 113, name: 'Acqua Naturale', price: 1.00 },
-    { id: 114, name: 'Acqua Frizzante', price: 1.00 },
-    { id: 115, name: 'Coca Cola', desc: '', price: 2.50 },
-    { id: 116, name: 'Fanta', desc: '', price: 2.50 },
-    { id: 117, name: 'Sprite', desc: '', price: 2.50 },
-    { id: 118, name: 'Chinotto', desc: '', price: 2.50 },
-    { id: 119, name: 'Estathe', desc: '', price: 2.50 },
-    { id: 120, name: 'becks 33cl', desc: '', price: 3.00 },
-    { id: 121, name: 'Menabrea 33cl', desc: '', price: 3.00 },
-    { id: 122, name: 'Ichnusa 33cl', desc: '', price: 3.00 },
-    { id: 123, name: 'Ichnusa Non Filtrata 50cl', desc: '', price: 3.50 },
-    { id: 124, name: 'Moretti 66cl', desc: '', price: 3.50 },
-    { id: 125, name: 'Aperol Spritz', desc: '', price: 3.50 },
+    { id: 114, name: 'Acqua Naturale', desc: '', price: 1.00 },
+    { id: 115, name: 'Acqua Frizzante', desc: '', price: 1.00 },
+    { id: 116, name: 'Coca Cola', desc: '', price: 2.50 },
+    { id: 117, name: 'Coca Cola Zero', desc: '', price: 2.50 },
+    { id: 118, name: 'Fanta', desc: '', price: 2.50 },
+    { id: 119, name: 'Sprite', desc: '', price: 2.50 },
+    { id: 120, name: 'Chinotto', desc: '', price: 2.50 },
+    { id: 121, name: 'Estathe al Limone', desc: '', price: 2.50 },
+    { id: 122, name: 'Estathe alla Pesca', desc: '', price: 2.50 },
+    { id: 123, name: 'Moretti Rossa 33cl', desc: '', price: 3.00 },
+    { id: 124, name: 'Becks 33cl', desc: '', price: 3.00 },
+    { id: 125, name: 'Ichnusa 33cl', desc: '', price: 3.00 },
+    { id: 126, name: 'Menabrea 33cl', desc: '', price: 3.00 },
+    { id: 127, name: 'Moretti Classica 66cl', desc: '', price: 3.50 },
+    { id: 128, name: 'Ichnusa Non Filtrata 50cl', desc: '', price: 3.50 },
+    { id: 129, name: 'Aperol Spritz', desc: '', price: 3.50 },
   ],
 };
 
@@ -169,6 +173,121 @@ const CAT_EMOJI = {
   'Limited Edition': '🔥', 'Focacce': '🫓', 'Calzoni': '🥙',
   'Panuozzi': '🥪', 'Hamburger': '🍔', 'Farinata': '🫓',
   'Fritti': '🍟', 'Dolci': '🍰', 'Bevande': '🥤',
+};
+
+function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, handleOrder }) {
+  const [nome, setNome] = useState('');
+  const [indirizzo, setIndirizzo] = useState('');
+  const [note, setNote] = useState('');
+  const [tipoOrdine, setTipoOrdine] = useState('delivery');
+
+  const doOrder = () => handleOrder({ nome, indirizzo, note, tipoOrdine });
+
+  if (ordered) return (
+    <View style={S.empty}>
+      <Text style={{ fontSize: 80 }}>🎉</Text>
+      <Text style={S.emptyTitle}>Ordine inviato!</Text>
+      <Text style={S.emptySub}>Ti contatteremo presto per confermare.</Text>
+      <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 16, width: '100%', alignItems: 'center' }}>
+        <Text style={{ fontSize: 12, color: C.grigio }}>Tempo stimato</Text>
+        <Text style={{ fontSize: 32, fontWeight: '900', color: C.rosso, marginTop: 4 }}>30-45 min</Text>
+      </View>
+      <TouchableOpacity style={S.emptyBtn} onPress={() => { setOrdered(false); setCart([]); setTab('home'); }}>
+        <Text style={S.emptyBtnText}>Torna alla Home</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  return (
+    <ScrollView style={S.scroll}>
+      {cart.length === 0 ? (
+        <View style={S.empty}>
+          <Text style={{ fontSize: 64 }}>🛒</Text>
+          <Text style={S.emptyTitle}>Carrello vuoto</Text>
+          <Text style={S.emptySub}>Aggiungi qualcosa dal menu!</Text>
+          <TouchableOpacity style={S.emptyBtn} onPress={() => setTab('menu')}>
+            <Text style={S.emptyBtnText}>Vai al Menu</Text>
+          </TouchableOpacity>
+        </View>
+      ) : (
+        <>
+          {cart.map(item => (
+            <View key={item.id} style={S.cartCard}>
+              <Text style={{ fontSize: 28 }}>🍕</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={S.cartName}>{item.name}</Text>
+                <Text style={S.cartPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
+              </View>
+            </View>
+          ))}
+
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>TIPO ORDINE</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'delivery' && S.typeBtnActive]} onPress={() => setTipoOrdine('delivery')}>
+                <Text style={[S.typeBtnText, tipoOrdine === 'delivery' && S.typeBtnTextActive]}>Delivery</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'asporto' && S.typeBtnActive]} onPress={() => setTipoOrdine('asporto')}>
+                <Text style={[S.typeBtnText, tipoOrdine === 'asporto' && S.typeBtnTextActive]}>Asporto</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>NOME E COGNOME</Text>
+            <input style={inputStyle} placeholder="Mario Rossi" value={nome} onChange={(e) => setNome(e.target.value)} />
+          </View>
+
+          {tipoOrdine === 'delivery' && (
+            <View style={S.formBox}>
+              <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA</Text>
+              <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
+              <Text style={{ fontSize: 10, color: C.grigio, marginTop: 6, fontStyle: 'italic' }}>Consegniamo entro 5km da Corso Giambone 8/b</Text>
+            </View>
+          )}
+
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>NOTE E ALLERGIE</Text>
+            <textarea style={textareaStyle} placeholder="Allergie, intolleranze, richieste speciali..." value={note} onChange={(e) => setNote(e.target.value)} />
+          </View>
+
+          <View style={S.totalCard}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+              <Text style={S.totalRow}>Subtotale</Text>
+              <Text style={S.totalRow}>€ {cartTotal.toFixed(2)}</Text>
+            </View>
+            {tipoOrdine === 'delivery' && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={S.totalRow}>Consegna</Text>
+                <Text style={S.totalRow}>€ 2.50</Text>
+              </View>
+            )}
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+              <Text style={S.totalBig}>Totale</Text>
+              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + (tipoOrdine === 'delivery' ? 2.5 : 0)).toFixed(2)}</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={S.checkoutBtn} onPress={doOrder}>
+            <Text style={S.checkoutText}>Conferma Ordine</Text>
+          </TouchableOpacity>
+        </>
+      )}
+    </ScrollView>
+  );
+}
+
+const inputStyle = {
+  border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
+  fontSize: 14, color: '#3D1A00', width: '100%', outline: 'none',
+  fontFamily: 'inherit', backgroundColor: 'white', boxSizing: 'border-box',
+};
+
+const textareaStyle = {
+  border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
+  fontSize: 14, color: '#3D1A00', width: '100%', minHeight: 80,
+  outline: 'none', fontFamily: 'inherit', resize: 'none',
+  backgroundColor: 'white', boxSizing: 'border-box',
 };
 
 export default function App() {
@@ -190,16 +309,19 @@ export default function App() {
   const cartN = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  const handleOrder = async () => {
+  const handleOrder = async ({ nome, indirizzo, note, tipoOrdine }) => {
     try {
       await supabase.from('ordini').insert([{
-        cliente: 'Cliente App',
+        cliente: nome || 'Cliente App',
         items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
-        totale: cartTotal + 2.5,
-        stato: 'nuovo'
+        totale: cartTotal + (tipoOrdine === 'delivery' ? 2.5 : 0),
+        stato: 'nuovo',
+        note: note,
+        indirizzo: tipoOrdine === 'delivery' ? indirizzo : 'Asporto',
+        tipo: tipoOrdine,
       }]);
     } catch (e) {
-      console.log('Errore ordine:', e);
+      console.log('Errore:', e);
     }
     setOrdered(true);
   };
@@ -210,7 +332,7 @@ export default function App() {
         <View>
           <Text style={S.heroGreeting}>Benvenuto da</Text>
           <Text style={S.heroName}>Pizzicata</Text>
-          <Text style={S.heroSlogan}>e che pizza... ragazzi!</Text>
+          <Text style={S.heroSlogan}></Text>
         </View>
         <Text style={{ fontSize: 70 }}>🍕</Text>
       </View>
@@ -223,7 +345,7 @@ export default function App() {
         <View style={S.tile}>
           <Text style={S.tileIcon}>🕐</Text>
           <Text style={S.tileTitle}>Orari</Text>
-          <Text style={S.tileVal}>12:00-14:30{'\n'}18:00-23:00</Text>
+          <Text style={S.tileVal}>LUN-DOM{'\n'}12:00-14:30{'\n'}18:00-23:00</Text>
         </View>
         <View style={S.tile}>
           <Text style={S.tileIcon}>📞</Text>
@@ -238,8 +360,8 @@ export default function App() {
           <Text style={S.quickLabel}>Delivery</Text>
           <Text style={S.quickSub}>A casa tua</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.marrone }]} onPress={() => setTab('menu')}>
-          <Text style={{ fontSize: 32 }}>🛍️</Text>
+        <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso }]} onPress={() => setTab('menu')}>
+          <Text style={{ fontSize: 32 }}>🏪</Text>
           <Text style={S.quickLabel}>Asporto</Text>
           <Text style={S.quickSub}>Ritiro in negozio</Text>
         </TouchableOpacity>
@@ -316,76 +438,6 @@ export default function App() {
     </View>
   );
 
-  const Cart = () => {
-    if (ordered) return (
-      <View style={S.empty}>
-        <Text style={{ fontSize: 80 }}>🎉</Text>
-        <Text style={S.emptyTitle}>Ordine inviato!</Text>
-        <Text style={S.emptySub}>Ti contatteremo presto per confermare.</Text>
-        <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 16, width: '100%', alignItems: 'center' }}>
-          <Text style={{ fontSize: 12, color: C.grigio }}>Tempo stimato</Text>
-          <Text style={{ fontSize: 32, fontWeight: '900', color: C.rosso, marginTop: 4 }}>30-45 min</Text>
-        </View>
-        <TouchableOpacity style={S.emptyBtn} onPress={() => { setOrdered(false); setCart([]); setTab('home'); }}>
-          <Text style={S.emptyBtnText}>Torna alla Home</Text>
-        </TouchableOpacity>
-      </View>
-    );
-
-    return (
-      <ScrollView style={S.scroll}>
-        {cart.length === 0 ? (
-          <View style={S.empty}>
-            <Text style={{ fontSize: 64 }}>🛒</Text>
-            <Text style={S.emptyTitle}>Carrello vuoto</Text>
-            <Text style={S.emptySub}>Aggiungi qualcosa dal menu!</Text>
-            <TouchableOpacity style={S.emptyBtn} onPress={() => setTab('menu')}>
-              <Text style={S.emptyBtnText}>Vai al Menu</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <>
-            {cart.map(item => (
-              <View key={item.id} style={S.cartCard}>
-                <Text style={{ fontSize: 28 }}>🍕</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={S.cartName}>{item.name}</Text>
-                  <Text style={S.cartPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
-                </View>
-                <View style={S.qtyCtrl}>
-                  <TouchableOpacity style={S.qtyMinus} onPress={() => remove(item.id)}>
-                    <Text style={S.qtyMinusText}>-</Text>
-                  </TouchableOpacity>
-                  <Text style={S.qtyN}>{item.qty}</Text>
-                  <TouchableOpacity style={S.qtyPlus} onPress={() => add(item)}>
-                    <Text style={S.qtyPlusText}>+</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            ))}
-            <View style={S.totalCard}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={S.totalRow}>Subtotale</Text>
-                <Text style={S.totalRow}>€ {cartTotal.toFixed(2)}</Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
-                <Text style={S.totalRow}>Consegna</Text>
-                <Text style={S.totalRow}>€ 2.50</Text>
-              </View>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                <Text style={S.totalBig}>Totale</Text>
-                <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + 2.5).toFixed(2)}</Text>
-              </View>
-            </View>
-            <TouchableOpacity style={S.checkoutBtn} onPress={handleOrder}>
-              <Text style={S.checkoutText}>Conferma Ordine</Text>
-            </TouchableOpacity>
-          </>
-        )}
-      </ScrollView>
-    );
-  };
-
   const Offers = () => (
     <ScrollView style={S.scroll}>
       {[
@@ -443,8 +495,13 @@ export default function App() {
     </ScrollView>
   );
 
-  const screens = { home: Home, menu: Menu, cart: Cart, offers: Offers, fidelity: Fidelity };
-  const Screen = screens[tab];
+  const screens = {
+    home: <Home />,
+    menu: <Menu />,
+    cart: <CartScreen cart={cart} cartTotal={cartTotal} ordered={ordered} setOrdered={setOrdered} setCart={setCart} setTab={setTab} handleOrder={handleOrder} />,
+    offers: <Offers />,
+    fidelity: <Fidelity />,
+  };
 
   return (
     <View style={S.root}>
@@ -468,7 +525,7 @@ export default function App() {
           )}
         </View>
       </View>
-      <View style={{ flex: 1 }}><Screen /></View>
+      <View style={{ flex: 1 }}>{screens[tab]}</View>
       <View style={S.navbar}>
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
@@ -491,7 +548,7 @@ export default function App() {
 const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.crema },
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  header: { backgroundColor: C.rosso, paddingTop: 48 },
+  header: { backgroundColor: C.marrone, paddingTop: 48 },
   flagBar: { flexDirection: 'row', height: 5 },
   flagSeg: { flex: 1 },
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
@@ -545,12 +602,18 @@ const S = StyleSheet.create({
   qtyN: { fontSize: 15, fontWeight: '700', color: C.marrone, minWidth: 18, textAlign: 'center' },
   qtyPlus: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.rosso, alignItems: 'center', justifyContent: 'center' },
   qtyPlusText: { fontSize: 16, fontWeight: '700', color: 'white' },
+  formBox: { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 },
+  formLabel: { fontSize: 11, color: C.grigio, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  typeBtn: { flex: 1, padding: 10, borderRadius: 10, alignItems: 'center', backgroundColor: C.cremaScuro },
+  typeBtnActive: { backgroundColor: C.rosso },
+  typeBtnText: { color: C.marrone, fontWeight: '700' },
+  typeBtnTextActive: { color: 'white' },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12, paddingHorizontal: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: C.marrone },
   emptySub: { fontSize: 13, color: C.grigio, textAlign: 'center' },
   emptyBtn: { backgroundColor: C.rosso, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 12, marginTop: 8 },
   emptyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
-  cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
+  cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12 },
   cartName: { fontSize: 14, fontWeight: '700', color: C.marrone },
   cartPrice: { fontSize: 13, color: C.rosso, marginTop: 2 },
   totalCard: { backgroundColor: 'white', borderRadius: 16, padding: 18, marginBottom: 14 },

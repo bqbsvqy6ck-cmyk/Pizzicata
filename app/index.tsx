@@ -181,7 +181,7 @@ const CAT_EMOJI = {
 
 const ORARI_SERA = ['Appena possibile', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
 const ORARI_PRANZO = ['Appena possibile', '12:00', '12:30', '13:00', '13:30', '14:00'];
-const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
+const ORARI_PANE = ['Mattina (12:00-14:30)', 'Sera (18:00-22:45)'];
 
 const getCalendario = () => {
   const giorni = [];
@@ -193,7 +193,7 @@ const getCalendario = () => {
     d.setDate(oggi.getDate() + i);
     giorni.push({
       label: i === 0 ? 'Oggi' : nomiGiorni[d.getDay()],
-     data: d.getDate() + ' ' + nomiMesi[d.getMonth()], 
+      data: d.getDate() + ' ' + nomiMesi[d.getMonth()],
       full: d.toLocaleDateString('it-IT'),
       isPranzo: true,
       isSera: true,
@@ -292,11 +292,16 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
   const [pagamento, setPagamento] = useState('contanti');
   const [giornoSelezionato, setGiornoSelezionato] = useState(0);
   const [errore, setErrore] = useState('');
-  const calendario = getCalendario().filter((_, i) => !cart.some(x => x.id >= 200) || i > 0);
+
+  // Per il pane: sempre dal giorno dopo (index 1+)
+  const haPane = cart.some(i => i.id >= 200);
+  const calendario = getCalendario().filter((_, i) => !haPane || i > 0);
+
   const ora = new Date().getHours();
   const isPranzo = ora < 15;
   const ORARI = isPranzo ? ORARI_PRANZO : ORARI_SERA;
-  const haPane = cart.some(i => i.id >= 200);
+
+  const spedizioneExtra = tipoOrdine === 'domicilio' ? 2.5 : 0;
 
   const doOrder = () => {
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
@@ -339,27 +344,33 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
             </View>
           ))}
 
-          {/* Tipo ordine */}
-          {!haPane && (
-            <View style={S.formBox}>
-              <Text style={S.formLabel}>TIPO ORDINE</Text>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'domicilio' && S.typeBtnActive]} onPress={() => setTipoOrdine('domicilio')}>
-                  <Text style={{ fontSize: 22 }}>🛵</Text>
-                  <Text style={[S.typeBtnText, tipoOrdine === 'domicilio' && S.typeBtnTextActive]}>Domicilio</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'asporto' && S.typeBtnActive]} onPress={() => setTipoOrdine('asporto')}>
-                  <Text style={{ fontSize: 22 }}>🏪</Text>
-                  <Text style={[S.typeBtnText, tipoOrdine === 'asporto' && S.typeBtnTextActive]}>Asporto</Text>
-                </TouchableOpacity>
-              </View>
+          {/* Banner info pane */}
+          {haPane && (
+            <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12 }}>
+              <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Ordine con pane del forno</Text>
+              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3 }}>Il pane viene preparato il giorno prima — scegli la data di domani o successiva.</Text>
             </View>
           )}
 
-          {haPane && (
-            <View style={[S.formBox, { backgroundColor: '#FFF8E7' }]}>
-              <Text style={[S.formLabel, { color: '#8B6914' }]}>RITIRO PANE</Text>
-              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 8 }}>Il pane si ritira sempre in pizzeria</Text>
+          {/* Tipo ordine — sempre visibile */}
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>TIPO ORDINE</Text>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'domicilio' && S.typeBtnActive]} onPress={() => setTipoOrdine('domicilio')}>
+                <Text style={{ fontSize: 22 }}>🛵</Text>
+                <Text style={[S.typeBtnText, tipoOrdine === 'domicilio' && S.typeBtnTextActive]}>Domicilio</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'asporto' && S.typeBtnActive]} onPress={() => setTipoOrdine('asporto')}>
+                <Text style={{ fontSize: 22 }}>🏪</Text>
+                <Text style={[S.typeBtnText, tipoOrdine === 'asporto' && S.typeBtnTextActive]}>Asporto</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Orario ritiro pane (solo se asporto + pane) */}
+          {haPane && tipoOrdine === 'asporto' && (
+            <View style={S.formBox}>
+              <Text style={S.formLabel}>ORARIO RITIRO PANE</Text>
               <View style={{ flexDirection: 'row', gap: 8 }}>
                 {ORARI_PANE.map(o => (
                   <TouchableOpacity key={o} style={[S.typeBtn, orario === o && S.typeBtnActive]} onPress={() => setOrario(o)}>
@@ -371,7 +382,7 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
           )}
 
           {/* Indirizzo */}
-          {tipoOrdine === 'domicilio' && !haPane && (
+          {tipoOrdine === 'domicilio' && (
             <View style={S.formBox}>
               <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA *</Text>
               <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
@@ -394,8 +405,8 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
             </ScrollView>
           </View>
 
-          {/* Orario */}
-          {!haPane && (
+          {/* Orario consegna (non per pane asporto) */}
+          {!(haPane && tipoOrdine === 'asporto') && (
             <View style={S.formBox}>
               <Text style={S.formLabel}>ORARIO</Text>
               <select value={orario} onChange={(e) => setOrario(e.target.value)} style={{ ...inputStyle, height: 44 }}>
@@ -438,7 +449,7 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
               <Text style={S.totalRow}>Subtotale</Text>
               <Text style={S.totalRow}>€ {cartTotal.toFixed(2)}</Text>
             </View>
-            {tipoOrdine === 'domicilio' && !haPane && (
+            {tipoOrdine === 'domicilio' && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={S.totalRow}>Consegna</Text>
                 <Text style={S.totalRow}>€ 2.50</Text>
@@ -446,7 +457,7 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
             )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={S.totalBig}>Totale</Text>
-              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + (tipoOrdine === 'domicilio' && !haPane ? 2.5 : 0)).toFixed(2)}</Text>
+              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + spedizioneExtra).toFixed(2)}</Text>
             </View>
           </View>
 
@@ -501,12 +512,13 @@ export default function App() {
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
+    const spedizione = tipoOrdine === 'domicilio' ? 2.5 : 0;
     try {
       await supabase.from('ordini').insert([{
         cliente: utente.nome,
         telefono: utente.telefono,
         items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
-        totale: cartTotal + (tipoOrdine === 'domicilio' && !cart.some(i => i.id >= 200) ? 2.5 : 0),
+        totale: cartTotal + spedizione,
         stato: 'nuovo',
         note: note,
         indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
@@ -540,7 +552,6 @@ export default function App() {
         </View>
       </View>
 
-      {/* Pane del giorno */}
       <View style={S.paneCard}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <Text style={{ fontSize: 28 }}>🍞</Text>
@@ -591,7 +602,7 @@ export default function App() {
     </ScrollView>
   );
 
- const Menu = () => (
+  const Menu = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.crema }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -606,7 +617,7 @@ export default function App() {
       {cat === 'Pane del Forno' && (
         <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12, marginTop: 8 }}>
           <Text style={{ fontSize: 13, color: '#8B6914', fontWeight: '700' }}>Pane fresco dal forno a legna</Text>
-          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria mattina o sera. Solo preordine per il giorno successivo.</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria o consegna a domicilio (+€2.50). Solo preordine per il giorno successivo.</Text>
         </View>
       )}
       {MENU[cat].map(item => {
@@ -736,7 +747,7 @@ const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.crema },
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
   header: { backgroundColor: C.rosso, paddingTop: 48 },
-  flagBar: { flexDirection: 'row', height: 5 },
+  flagBar: { flexDirection: 'row', height: 20, borderTopWidth: 2, borderBottomWidth: 2, borderColor: C.oro },
   flagSeg: { flex: 1 },
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
   headerLogo: { fontSize: 36, fontWeight: '900', color: C.crema, letterSpacing: -1 },

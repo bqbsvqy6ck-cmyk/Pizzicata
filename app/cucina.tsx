@@ -13,9 +13,9 @@ const C = {
 };
 
 const STATI = {
-  nuovo:          { label: 'Nuovo',          color: '#C0392B', next: 'in_lavorazione', nextLabel: '▶  Prendi in carico' },
-  in_lavorazione: { label: 'In lavorazione', color: '#D07000', next: 'pronto',          nextLabel: '✓  Pronto per uscita' },
-  pronto:         { label: 'Pronto',         color: '#27AE60', next: 'consegnato',      nextLabel: '🛵  Consegnato / Ritirato' },
+  nuovo:          { label: 'Nuovo',          color: '#C0392B', next: 'in_lavorazione', nextLabel: 'Prendi in carico' },
+  in_lavorazione: { label: 'In lavorazione', color: '#D07000', next: 'pronto',          nextLabel: 'Pronto per uscita' },
+  pronto:         { label: 'Pronto',         color: '#27AE60', next: 'consegnato',      nextLabel: 'Consegnato / Ritirato' },
   consegnato:     { label: 'Consegnato',     color: '#555',    next: null,              nextLabel: null },
 };
 
@@ -24,7 +24,7 @@ const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
 export default function Cucina() {
   const [ordini, setOrdini] = useState([]);
   const [filtro, setFiltro] = useState('attivi');
-  const [aperto, setAperto] = useState(null); // id ordine espanso
+  const [aperto, setAperto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
 
@@ -34,7 +34,7 @@ export default function Cucina() {
       .select('*')
       .order('created_at', { ascending: false })
       .limit(100);
-    if (error) { setErrMsg('Errore caricamento: ' + error.message); return; }
+    if (error) { setErrMsg('Errore: ' + error.message); return; }
     if (data) setOrdini(data);
     setErrMsg('');
   };
@@ -49,46 +49,26 @@ export default function Cucina() {
     const cfg = STATI[ordine.stato];
     if (!cfg?.next) return;
     setLoading(true);
-    const { error } = await supabase
-      .from('ordini')
-      .update({ stato: cfg.next })
-      .eq('id', ordine.id);
+    const { error } = await supabase.from('ordini').update({ stato: cfg.next }).eq('id', ordine.id);
     setLoading(false);
-    if (error) {
-      setErrMsg('Errore aggiornamento: ' + error.message);
-      return;
-    }
+    if (error) { setErrMsg('Errore: ' + error.message); return; }
     setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, stato: cfg.next } : o));
   };
 
-  const visibili = filtro === 'attivi'
-    ? ordini.filter(o => o.stato !== 'consegnato')
-    : ordini;
+  const visibili = filtro === 'attivi' ? ordini.filter(o => o.stato !== 'consegnato') : ordini;
 
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.marrone} />
-
-      {/* HEADER */}
       <View style={S.header}>
-        <Text style={S.headerTitle}>🍕 Cucina Pizzicata</Text>
+        <Text style={S.headerTitle}>Cucina Pizzicata</Text>
         <View style={S.headerRow}>
           <View style={S.filtroRow}>
-            <TouchableOpacity
-              style={[S.filtroBtn, filtro === 'attivi' && S.filtroBtnOn]}
-              onPress={() => setFiltro('attivi')}
-            >
-              <Text style={[S.filtroBtnTxt, filtro === 'attivi' && S.filtroBtnTxtOn]}>
-                Attivi ({ordini.filter(o => o.stato !== 'consegnato').length})
-              </Text>
+            <TouchableOpacity style={[S.filtroBtn, filtro === 'attivi' && S.filtroBtnOn]} onPress={() => setFiltro('attivi')}>
+              <Text style={[S.filtroBtnTxt, filtro === 'attivi' && S.filtroBtnTxtOn]}>Attivi ({ordini.filter(o => o.stato !== 'consegnato').length})</Text>
             </TouchableOpacity>
-            <TouchableOpacity
-              style={[S.filtroBtn, filtro === 'tutti' && S.filtroBtnOn]}
-              onPress={() => setFiltro('tutti')}
-            >
-              <Text style={[S.filtroBtnTxt, filtro === 'tutti' && S.filtroBtnTxtOn]}>
-                Tutti ({ordini.length})
-              </Text>
+            <TouchableOpacity style={[S.filtroBtn, filtro === 'tutti' && S.filtroBtnOn]} onPress={() => setFiltro('tutti')}>
+              <Text style={[S.filtroBtnTxt, filtro === 'tutti' && S.filtroBtnTxtOn]}>Tutti ({ordini.length})</Text>
             </TouchableOpacity>
           </View>
           <TouchableOpacity style={S.refreshBtn} onPress={carica}>
@@ -98,7 +78,6 @@ export default function Cucina() {
         {errMsg ? <Text style={S.errMsg}>{errMsg}</Text> : null}
       </View>
 
-      {/* LISTA ORDINI */}
       <ScrollView style={S.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
         {visibili.length === 0 && (
           <View style={S.empty}>
@@ -114,19 +93,11 @@ export default function Cucina() {
           try { items = JSON.parse(ordine.items || '[]'); } catch {}
           const isAsporto = ordine.tipo === 'asporto' || ordine.indirizzo === 'Asporto';
           const orarioLabel = ordine.orario_consegna || '—';
-          const pagLabel = ordine.pagamento
-            ? ordine.pagamento.charAt(0).toUpperCase() + ordine.pagamento.slice(1)
-            : 'Contanti';
+          const pagLabel = ordine.pagamento ? ordine.pagamento.charAt(0).toUpperCase() + ordine.pagamento.slice(1) : 'Contanti';
 
           return (
             <View key={ordine.id} style={[S.card, { borderLeftColor: cfg.color }]}>
-
-              {/* HEADER CARD — sempre visibile, tap per espandere */}
-              <TouchableOpacity
-                style={S.cardHeader}
-                onPress={() => setAperto(isAperto ? null : ordine.id)}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={S.cardHeader} onPress={() => setAperto(isAperto ? null : ordine.id)} activeOpacity={0.8}>
                 <View style={S.cardHeaderLeft}>
                   <View style={[S.statoBadge, { backgroundColor: cfg.color }]}>
                     <Text style={S.statoTxt}>{cfg.label.toUpperCase()}</Text>
@@ -136,45 +107,35 @@ export default function Cucina() {
                 </View>
                 <View style={S.cardHeaderRight}>
                   <Text style={S.cardTotale}>€ {Number(ordine.totale || 0).toFixed(2)}</Text>
-                  <Text style={S.cardTipo}>{isAsporto ? '🏪 Asporto' : '🛵 Domicilio'}</Text>
+                  <Text style={S.cardTipo}>{isAsporto ? 'Asporto' : 'Domicilio'}</Text>
                   <Text style={{ color: C.oro, fontSize: 18, marginTop: 6 }}>{isAperto ? '▲' : '▼'}</Text>
                 </View>
               </TouchableOpacity>
 
-              {/* DETTAGLI — visibili solo se aperto */}
               {isAperto && (
                 <View style={S.cardBody}>
-
-                  {/* Cliente */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>CLIENTE</Text>
                     <Text style={S.infoVal}>👤 {ordine.cliente}</Text>
                     <Text style={S.infoVal}>📞 {ordine.telefono}</Text>
                   </View>
 
-                  {/* Consegna */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>CONSEGNA</Text>
-                    <Text style={S.infoVal}>
-                      {isAsporto ? '🏪 Ritiro in pizzeria' : `🛵 ${ordine.indirizzo}`}
-                    </Text>
+                    <Text style={S.infoVal}>{isAsporto ? 'Ritiro in pizzeria' : ordine.indirizzo}</Text>
                     <Text style={S.infoVal}>🕐 {orarioLabel}</Text>
                   </View>
 
-                  {/* Pagamento */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>PAGAMENTO</Text>
-                    <Text style={S.infoVal}>
-                      {PAG_ICON[ordine.pagamento] || '💵'} {pagLabel}
-                    </Text>
+                    <Text style={S.infoVal}>{PAG_ICON[ordine.pagamento] || '💵'} {pagLabel}</Text>
                   </View>
 
-                  {/* Articoli */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>ARTICOLI</Text>
                     {items.map((item, i) => (
                       <View key={i} style={S.itemRow}>
-                        <Text style={S.itemQty}>×{item.qty}</Text>
+                        <Text style={S.itemQty}>x{item.qty}</Text>
                         <Text style={S.itemName}>{item.name}</Text>
                         <Text style={S.itemPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
                       </View>
@@ -185,42 +146,29 @@ export default function Cucina() {
                     </View>
                   </View>
 
-                  {/* Note / allergie */}
                   {ordine.note ? (
                     <View style={S.noteBox}>
-                      <Text style={S.sezioneLabel}>⚠️ NOTE / ALLERGIE</Text>
+                      <Text style={S.sezioneLabel}>NOTE / ALLERGIE</Text>
                       <Text style={S.noteTxt}>{ordine.note}</Text>
                     </View>
                   ) : null}
 
-                  {/* Bottone avanza stato */}
                   {cfg.next && (
-                    <TouchableOpacity
-                      style={[S.actionBtn, { backgroundColor: cfg.color }, loading && { opacity: 0.6 }]}
-                      onPress={() => avanzaStato(ordine)}
-                      disabled={loading}
-                    >
-                      <Text style={S.actionBtnTxt}>
-                        {loading ? 'Aggiornamento...' : cfg.nextLabel}
-                      </Text>
+                    <TouchableOpacity style={[S.actionBtn, { backgroundColor: cfg.color }, loading && { opacity: 0.6 }]} onPress={() => avanzaStato(ordine)} disabled={loading}>
+                      <Text style={S.actionBtnTxt}>{loading ? 'Aggiornamento...' : cfg.nextLabel}</Text>
                     </TouchableOpacity>
                   )}
                   {!cfg.next && (
                     <View style={[S.actionBtn, { backgroundColor: '#333' }]}>
-                      <Text style={S.actionBtnTxt}>✓ Ordine completato</Text>
+                      <Text style={S.actionBtnTxt}>Ordine completato</Text>
                     </View>
                   )}
                 </View>
               )}
 
-              {/* Bottone rapido anche da chiuso (solo per "nuovo") */}
               {!isAperto && ordine.stato === 'nuovo' && (
-                <TouchableOpacity
-                  style={[S.quickBtn, { backgroundColor: STATI.nuovo.color }]}
-                  onPress={() => avanzaStato(ordine)}
-                  disabled={loading}
-                >
-                  <Text style={S.quickBtnTxt}>▶ Prendi in carico</Text>
+                <TouchableOpacity style={[S.quickBtn, { backgroundColor: STATI.nuovo.color }]} onPress={() => avanzaStato(ordine)} disabled={loading}>
+                  <Text style={S.quickBtnTxt}>Prendi in carico</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -246,8 +194,6 @@ const S = StyleSheet.create({
   scroll: { flex: 1, padding: 12 },
   empty: { alignItems: 'center', marginTop: 80, gap: 14 },
   emptyTxt: { color: C.grigio, fontSize: 16 },
-
-  // Card
   card: { backgroundColor: '#221000', borderRadius: 16, marginBottom: 14, borderLeftWidth: 5, overflow: 'hidden' },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: 14 },
   cardHeaderLeft: { flex: 1, gap: 4 },
@@ -258,14 +204,10 @@ const S = StyleSheet.create({
   cardOrario: { fontSize: 12, color: C.oro },
   cardTotale: { fontSize: 20, fontWeight: '900', color: C.oro },
   cardTipo: { fontSize: 12, color: 'rgba(242,232,213,0.5)' },
-
-  // Body espanso
   cardBody: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },
   sezione: { padding: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   sezioneLabel: { fontSize: 9, letterSpacing: 2, color: C.grigio, marginBottom: 6, fontWeight: '700' },
   infoVal: { fontSize: 14, color: C.crema, fontWeight: '600', marginBottom: 3 },
-
-  // Articoli
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 8 },
   itemQty: { fontSize: 14, fontWeight: '800', color: C.oro, minWidth: 28 },
   itemName: { flex: 1, fontSize: 13, color: C.crema },
@@ -273,12 +215,8 @@ const S = StyleSheet.create({
   totaleRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   totaleLbl: { fontSize: 11, fontWeight: '800', color: C.grigio, letterSpacing: 1 },
   totaleVal: { fontSize: 18, fontWeight: '900', color: C.oro },
-
-  // Note
   noteBox: { margin: 14, marginTop: 0, backgroundColor: 'rgba(200,150,30,0.1)', borderRadius: 10, padding: 12 },
   noteTxt: { fontSize: 13, color: '#FFD080', fontStyle: 'italic', marginTop: 4 },
-
-  // Bottoni
   actionBtn: { margin: 14, marginTop: 6, borderRadius: 12, padding: 16, alignItems: 'center' },
   actionBtnTxt: { color: 'white', fontSize: 15, fontWeight: '800' },
   quickBtn: { marginHorizontal: 14, marginBottom: 14, borderRadius: 10, padding: 12, alignItems: 'center' },

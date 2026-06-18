@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const supabase = createClient(
@@ -13,6 +13,10 @@ const C = {
 };
 
 const MENU = {
+  'Pane del Forno': [
+    { id: 200, name: 'Filone Classico', desc: 'Pane artigianale 500gr, cotto nel forno a legna. Disponibile ogni mattina — max 4-6 filoni al giorno', price: 1.50, limitato: true },
+    { id: 201, name: 'Filone Integrale', desc: 'Pane integrale artigianale 500gr, dal forno a legna. Disponibile ogni mattina — max 4-6 filoni al giorno', price: 2.00, limitato: true },
+  ],
   'Pizze Rosse': [
     { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.50 },
     { id: 2, name: 'Marinara', desc: "Pomodoro, Olio all'aglio, Origano", price: 5.50 },
@@ -36,7 +40,7 @@ const MENU = {
     { id: 20, name: 'Vegetariana', desc: 'Pomodoro, Mozzarella, Verdure, Grana', price: 8.00 },
   ],
   'Pizze Bianche': [
-    { id: 21, name: 'Biancaneve', desc: ' Mozzarella', price: 6.00 },
+    { id: 21, name: 'Biancaneve', desc: 'Mozzarella', price: 6.00 },
     { id: 22, name: 'Certosino', desc: 'Mozzarella, Certosino', price: 7.00 },
     { id: 23, name: '4 Stagioni', desc: 'Mozzarella, Cotto, Olive, Carciofi, Funghi', price: 8.00 },
     { id: 24, name: 'Bufala', desc: 'Mozzarella di Bufala, Pomodorini, Origano', price: 8.50 },
@@ -169,29 +173,142 @@ const MENU = {
 };
 
 const CAT_EMOJI = {
-  'Pizze Rosse': '🍕', 'Pizze Bianche': '🍕', 'Pizze Speciali': '⭐',
-  'Limited Edition': '🔥', 'Focacce': '🫓', 'Calzoni': '🥙',
-  'Panuozzi': '🥪', 'Hamburger': '🍔', 'Farinata': '🫓',
-  'Fritti': '🍟', 'Dolci': '🍰', 'Bevande': '🥤',
+  'Pane del Forno': '🍞', 'Pizze Rosse': '🍕', 'Pizze Bianche': '🍕',
+  'Pizze Speciali': '⭐', 'Limited Edition': '🔥', 'Focacce': '🫓',
+  'Calzoni': '🥙', 'Panuozzi': '🥪', 'Hamburger': '🍔',
+  'Farinata': '🫓', 'Fritti': '🍟', 'Dolci': '🍰', 'Bevande': '🥤',
 };
 
-function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, handleOrder }) {
-  const [nome, setNome] = useState('');
-  const [indirizzo, setIndirizzo] = useState('');
-  const [note, setNote] = useState('');
-  const [tipoOrdine, setTipoOrdine] = useState('delivery');
+const ORARI_SERA = ['Appena possibile', '18:00', '18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
+const ORARI_PRANZO = ['Appena possibile', '12:00', '12:30', '13:00', '13:30', '14:00'];
+const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
 
-  const doOrder = () => handleOrder({ nome, indirizzo, note, tipoOrdine });
+const getCalendario = () => {
+  const giorni = [];
+  const oggi = new Date();
+  const nomiGiorni = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+  const nomiMesi = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(oggi);
+    d.setDate(oggi.getDate() + i);
+    giorni.push({
+      label: i === 0 ? 'Oggi' : nomiGiorni[d.getDay()],
+     data: d.getDate() + ' ' + nomiMesi[d.getMonth()], 
+      full: d.toLocaleDateString('it-IT'),
+      isPranzo: true,
+      isSera: true,
+    });
+  }
+  return giorni;
+};
+
+// LOGIN SCREEN
+function LoginScreen({ onLogin }) {
+  const [tel, setTel] = useState('');
+  const [nome, setNome] = useState('');
+  const [step, setStep] = useState(1);
+  const [errore, setErrore] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  const avanti = async () => {
+    const clean = tel.replace(/\s/g, '');
+    if (clean.length < 9) { setErrore('Inserisci un numero valido'); return; }
+    setLoading(true);
+    const { data } = await supabase.from('clienti').select('*').eq('telefono', clean).single();
+    setLoading(false);
+    if (data) {
+      onLogin({ telefono: clean, nome: data.nome, indirizzo: data.indirizzo || '' });
+    } else {
+      setStep(2);
+      setErrore('');
+    }
+  };
+
+  const registra = async () => {
+    if (!nome.trim()) { setErrore('Inserisci il tuo nome'); return; }
+    const clean = tel.replace(/\s/g, '');
+    setLoading(true);
+    await supabase.from('clienti').insert([{ telefono: clean, nome: nome.trim() }]);
+    setLoading(false);
+    onLogin({ telefono: clean, nome: nome.trim(), indirizzo: '' });
+  };
+
+  return (
+    <View style={S.root}>
+      <StatusBar barStyle="light-content" backgroundColor={C.rosso} />
+      <View style={S.loginHeader}>
+        <Text style={S.loginLogo}>Pizzicata</Text>
+        <Text style={S.loginSub}>- TORINO -</Text>
+      </View>
+      <View style={S.loginBody}>
+        <Text style={S.loginEmoji}>🍕</Text>
+        <Text style={S.loginTitle}>Benvenuto!</Text>
+        <Text style={S.loginDesc}>
+          {step === 1 ? 'Inserisci il tuo numero di telefono per ordinare' : 'Prima volta? Inserisci il tuo nome'}
+        </Text>
+        {step === 1 ? (
+          <View style={S.loginBox}>
+            <Text style={S.formLabel}>NUMERO DI TELEFONO</Text>
+            <input
+              style={inputStyle}
+              placeholder="333 1234567"
+              value={tel}
+              onChange={(e) => setTel(e.target.value)}
+              type="tel"
+            />
+            {errore ? <Text style={S.errore}>{errore}</Text> : null}
+            <TouchableOpacity style={S.checkoutBtn} onPress={avanti}>
+              <Text style={S.checkoutText}>{loading ? 'Caricamento...' : 'Continua'}</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={S.loginBox}>
+            <Text style={S.formLabel}>COME TI CHIAMI?</Text>
+            <input
+              style={inputStyle}
+              placeholder="Mario Rossi"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+            />
+            {errore ? <Text style={S.errore}>{errore}</Text> : null}
+            <TouchableOpacity style={S.checkoutBtn} onPress={registra}>
+              <Text style={S.checkoutText}>{loading ? 'Registrazione...' : 'Accedi'}</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12, alignItems: 'center' }}>
+              <Text style={{ color: C.grigio, fontSize: 13 }}>Indietro</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </View>
+  );
+}
+
+function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, handleOrder, utente }) {
+  const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
+  const [note, setNote] = useState('');
+  const [tipoOrdine, setTipoOrdine] = useState('domicilio');
+  const [orario, setOrario] = useState('Appena possibile');
+  const [pagamento, setPagamento] = useState('contanti');
+  const [giornoSelezionato, setGiornoSelezionato] = useState(0);
+  const [errore, setErrore] = useState('');
+  const calendario = getCalendario().filter((_, i) => !cart.some(x => x.id >= 200) || i > 0);
+  const ora = new Date().getHours();
+  const isPranzo = ora < 15;
+  const ORARI = isPranzo ? ORARI_PRANZO : ORARI_SERA;
+  const haPane = cart.some(i => i.id >= 200);
+
+  const doOrder = () => {
+    if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
+    setErrore('');
+    handleOrder({ indirizzo, note, tipoOrdine, orario, pagamento, giorno: calendario[giornoSelezionato].full });
+  };
 
   if (ordered) return (
     <View style={S.empty}>
       <Text style={{ fontSize: 80 }}>🎉</Text>
       <Text style={S.emptyTitle}>Ordine inviato!</Text>
-      <Text style={S.emptySub}>Ti contatteremo presto per confermare.</Text>
-      <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 20, marginTop: 16, width: '100%', alignItems: 'center' }}>
-        <Text style={{ fontSize: 12, color: C.grigio }}>Tempo stimato</Text>
-        <Text style={{ fontSize: 32, fontWeight: '900', color: C.rosso, marginTop: 4 }}>30-45 min</Text>
-      </View>
+      <Text style={S.emptySub}>Ciao {utente.nome}, ti contatteremo presto!</Text>
       <TouchableOpacity style={S.emptyBtn} onPress={() => { setOrdered(false); setCart([]); setTab('home'); }}>
         <Text style={S.emptyBtnText}>Torna alla Home</Text>
       </TouchableOpacity>
@@ -213,50 +330,115 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
         <>
           {cart.map(item => (
             <View key={item.id} style={S.cartCard}>
-              <Text style={{ fontSize: 28 }}>🍕</Text>
+              <Text style={{ fontSize: 26 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={S.cartName}>{item.name}</Text>
                 <Text style={S.cartPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
               </View>
+              <Text style={{ fontSize: 13, color: C.grigio }}>x{item.qty}</Text>
             </View>
           ))}
 
-          <View style={S.formBox}>
-            <Text style={S.formLabel}>TIPO ORDINE</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'delivery' && S.typeBtnActive]} onPress={() => setTipoOrdine('delivery')}>
-                <Text style={[S.typeBtnText, tipoOrdine === 'delivery' && S.typeBtnTextActive]}>Delivery</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'asporto' && S.typeBtnActive]} onPress={() => setTipoOrdine('asporto')}>
-                <Text style={[S.typeBtnText, tipoOrdine === 'asporto' && S.typeBtnTextActive]}>Asporto</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-
-          <View style={S.formBox}>
-            <Text style={S.formLabel}>NOME E COGNOME</Text>
-            <input style={inputStyle} placeholder="Mario Rossi" value={nome} onChange={(e) => setNome(e.target.value)} />
-          </View>
-
-          {tipoOrdine === 'delivery' && (
+          {/* Tipo ordine */}
+          {!haPane && (
             <View style={S.formBox}>
-              <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA</Text>
+              <Text style={S.formLabel}>TIPO ORDINE</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'domicilio' && S.typeBtnActive]} onPress={() => setTipoOrdine('domicilio')}>
+                  <Text style={{ fontSize: 22 }}>🛵</Text>
+                  <Text style={[S.typeBtnText, tipoOrdine === 'domicilio' && S.typeBtnTextActive]}>Domicilio</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={[S.typeBtn, tipoOrdine === 'asporto' && S.typeBtnActive]} onPress={() => setTipoOrdine('asporto')}>
+                  <Text style={{ fontSize: 22 }}>🏪</Text>
+                  <Text style={[S.typeBtnText, tipoOrdine === 'asporto' && S.typeBtnTextActive]}>Asporto</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {haPane && (
+            <View style={[S.formBox, { backgroundColor: '#FFF8E7' }]}>
+              <Text style={[S.formLabel, { color: '#8B6914' }]}>RITIRO PANE</Text>
+              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 8 }}>Il pane si ritira sempre in pizzeria</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {ORARI_PANE.map(o => (
+                  <TouchableOpacity key={o} style={[S.typeBtn, orario === o && S.typeBtnActive]} onPress={() => setOrario(o)}>
+                    <Text style={[S.typeBtnText, orario === o && S.typeBtnTextActive]}>{o}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+
+          {/* Indirizzo */}
+          {tipoOrdine === 'domicilio' && !haPane && (
+            <View style={S.formBox}>
+              <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA *</Text>
               <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
               <Text style={{ fontSize: 10, color: C.grigio, marginTop: 6, fontStyle: 'italic' }}>Consegniamo entro 5km da Corso Giambone 8/b</Text>
             </View>
           )}
 
+          {/* Calendario */}
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>GIORNO</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                {calendario.map((g, i) => (
+                  <TouchableOpacity key={i} style={[S.calBtn, giornoSelezionato === i && S.calBtnActive]} onPress={() => setGiornoSelezionato(i)}>
+                    <Text style={[S.calGiorno, giornoSelezionato === i && { color: 'white' }]}>{g.label}</Text>
+                    <Text style={[S.calData, giornoSelezionato === i && { color: 'rgba(255,255,255,0.8)' }]}>{g.data}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+
+          {/* Orario */}
+          {!haPane && (
+            <View style={S.formBox}>
+              <Text style={S.formLabel}>ORARIO</Text>
+              <select value={orario} onChange={(e) => setOrario(e.target.value)} style={{ ...inputStyle, height: 44 }}>
+                {ORARI.map(o => <option key={o} value={o}>{o}</option>)}
+              </select>
+            </View>
+          )}
+
+          {/* Pagamento */}
+          <View style={S.formBox}>
+            <Text style={S.formLabel}>METODO DI PAGAMENTO</Text>
+            <View style={{ gap: 8 }}>
+              {[
+                { key: 'contanti', icon: '💵', label: 'Contanti', sub: 'Paga alla consegna' },
+                { key: 'pos', icon: '💳', label: 'POS', sub: 'Bancomat o carta' },
+                { key: 'online', icon: '📱', label: 'Online', sub: 'Paga subito in app' },
+              ].map(p => (
+                <TouchableOpacity key={p.key} style={[S.pagBtn, pagamento === p.key && S.pagBtnActive]} onPress={() => setPagamento(p.key)}>
+                  <Text style={{ fontSize: 24 }}>{p.icon}</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[S.pagLabel, pagamento === p.key && { color: 'white' }]}>{p.label}</Text>
+                    <Text style={[S.pagSub, pagamento === p.key && { color: 'rgba(255,255,255,0.7)' }]}>{p.sub}</Text>
+                  </View>
+                  {pagamento === p.key && <Text style={{ color: 'white', fontSize: 18 }}>✓</Text>}
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+
+          {/* Note */}
           <View style={S.formBox}>
             <Text style={S.formLabel}>NOTE E ALLERGIE</Text>
             <textarea style={textareaStyle} placeholder="Allergie, intolleranze, richieste speciali..." value={note} onChange={(e) => setNote(e.target.value)} />
           </View>
+
+          {errore ? <Text style={S.errore}>{errore}</Text> : null}
 
           <View style={S.totalCard}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={S.totalRow}>Subtotale</Text>
               <Text style={S.totalRow}>€ {cartTotal.toFixed(2)}</Text>
             </View>
-            {tipoOrdine === 'delivery' && (
+            {tipoOrdine === 'domicilio' && !haPane && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={S.totalRow}>Consegna</Text>
                 <Text style={S.totalRow}>€ 2.50</Text>
@@ -264,7 +446,7 @@ function CartScreen({ cart, cartTotal, ordered, setOrdered, setCart, setTab, han
             )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={S.totalBig}>Totale</Text>
-              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + (tipoOrdine === 'delivery' ? 2.5 : 0)).toFixed(2)}</Text>
+              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + (tipoOrdine === 'domicilio' && !haPane ? 2.5 : 0)).toFixed(2)}</Text>
             </View>
           </View>
 
@@ -291,10 +473,19 @@ const textareaStyle = {
 };
 
 export default function App() {
+  const [utente, setUtente] = useState(null);
   const [tab, setTab] = useState('home');
-  const [cat, setCat] = useState('Pizze Rosse');
+  const [cat, setCat] = useState('Pane del Forno');
   const [cart, setCart] = useState([]);
   const [ordered, setOrdered] = useState(false);
+  const [ora, setOra] = useState(new Date());
+
+  useEffect(() => {
+    const t = setInterval(() => setOra(new Date()), 60000);
+    return () => clearInterval(t);
+  }, []);
+
+  if (!utente) return <LoginScreen onLogin={setUtente} />;
 
   const add = (item) => setCart(prev => {
     const ex = prev.find(c => c.id === item.id);
@@ -309,33 +500,60 @@ export default function App() {
   const cartN = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
 
-  const handleOrder = async ({ nome, indirizzo, note, tipoOrdine }) => {
+  const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
     try {
       await supabase.from('ordini').insert([{
-        cliente: nome || 'Cliente App',
+        cliente: utente.nome,
+        telefono: utente.telefono,
         items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
-        totale: cartTotal + (tipoOrdine === 'delivery' ? 2.5 : 0),
+        totale: cartTotal + (tipoOrdine === 'domicilio' && !cart.some(i => i.id >= 200) ? 2.5 : 0),
         stato: 'nuovo',
         note: note,
-        indirizzo: tipoOrdine === 'delivery' ? indirizzo : 'Asporto',
+        indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
         tipo: tipoOrdine,
+        orario_consegna: giorno + ' - ' + orario,
+        pagamento: pagamento,
       }]);
+      if (utente.indirizzo !== indirizzo && indirizzo) {
+        await supabase.from('clienti').update({ indirizzo }).eq('telefono', utente.telefono);
+      }
     } catch (e) {
       console.log('Errore:', e);
     }
     setOrdered(true);
   };
 
+  const oraStr = ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+  const dataStr = ora.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long' });
+
   const Home = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
       <View style={S.heroBanner}>
         <View>
-          <Text style={S.heroGreeting}>Benvenuto da</Text>
+          <Text style={S.heroGreeting}>Ciao {utente.nome}!</Text>
           <Text style={S.heroName}>Pizzicata</Text>
-          <Text style={S.heroSlogan}></Text>
+          <Text style={S.heroSlogan}>e che pizza... ragazzi!</Text>
         </View>
-        <Text style={{ fontSize: 70 }}>🍕</Text>
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={{ fontSize: 28, color: C.oro, fontWeight: '900' }}>{oraStr}</Text>
+          <Text style={{ fontSize: 10, color: 'rgba(242,232,213,0.6)', marginTop: 2, textAlign: 'right' }}>{dataStr}</Text>
+        </View>
       </View>
+
+      {/* Pane del giorno */}
+      <View style={S.paneCard}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+          <Text style={{ fontSize: 28 }}>🍞</Text>
+          <View>
+            <Text style={S.paneTitolo}>Pane del Forno a Legna</Text>
+            <Text style={S.paneSub}>Fresco ogni mattina — solo 4-6 filoni al giorno!</Text>
+          </View>
+        </View>
+        <TouchableOpacity style={S.paneBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
+          <Text style={S.paneBtnText}>Prenota il tuo filone →</Text>
+        </TouchableOpacity>
+      </View>
+
       <View style={S.tilesRow}>
         <View style={S.tile}>
           <Text style={S.tileIcon}>📍</Text>
@@ -345,7 +563,7 @@ export default function App() {
         <View style={S.tile}>
           <Text style={S.tileIcon}>🕐</Text>
           <Text style={S.tileTitle}>Orari</Text>
-          <Text style={S.tileVal}>LUN-DOM{'\n'}12:00-14:30{'\n'}18:00-23:00</Text>
+          <Text style={S.tileVal}>LUN-DOM{'\n'}12:00-14:30{'\n'}18:00-22:45</Text>
         </View>
         <View style={S.tile}>
           <Text style={S.tileIcon}>📞</Text>
@@ -353,144 +571,115 @@ export default function App() {
           <Text style={S.tileVal}>331 5695959{'\n'}011 0362310</Text>
         </View>
       </View>
+
       <Text style={S.secLabel}>ORDINA ORA</Text>
-      <View style={S.quickRow}>
-        <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso }]} onPress={() => setTab('menu')}>
-          <Text style={{ fontSize: 32 }}>🛵</Text>
-          <Text style={S.quickLabel}>Delivery</Text>
-          <Text style={S.quickSub}>A casa tua</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso }]} onPress={() => setTab('menu')}>
-          <Text style={{ fontSize: 32 }}>🏪</Text>
-          <Text style={S.quickLabel}>Asporto</Text>
-          <Text style={S.quickSub}>Ritiro in negozio</Text>
-        </TouchableOpacity>
-      </View>
-      <Text style={S.secLabel}>OFFERTA DEL GIORNO</Text>
+      <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso, marginBottom: 16 }]} onPress={() => setTab('menu')}>
+        <Text style={{ fontSize: 32 }}>🍕</Text>
+        <Text style={S.quickLabel}>Ordina ora</Text>
+        <Text style={S.quickSub}>Domicilio o asporto</Text>
+      </TouchableOpacity>
+
+      <Text style={S.secLabel}>OFFERTE</Text>
       <TouchableOpacity style={S.offerBig} onPress={() => setTab('offers')}>
         <View>
-          <View style={S.offerBadge}><Text style={S.offerBadgeText}>-27%</Text></View>
-          <Text style={S.offerBigTitle}>Lunch Express</Text>
-          <Text style={S.offerBigDesc}>Pizza + bibita a pranzo</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 8 }}>
-            <Text style={S.offerBigPrice}>9,50</Text>
-            <Text style={S.offerBigOld}>13,00</Text>
-          </View>
+          <Text style={S.offerBigTitle}>Combo Famiglia</Text>
+          <Text style={S.offerBigDesc}>4 pizze + 4 dolci a scelta</Text>
+          <Text style={{ color: C.oro, fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>4 bibite in omaggio!</Text>
         </View>
-        <Text style={{ fontSize: 64 }}>🍕</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={S.fidelityTeaser} onPress={() => setTab('fidelity')}>
-        <Text style={{ fontSize: 28 }}>⭐</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={S.fidelityTeaserTitle}>La tua Fidelity Card</Text>
-          <Text style={S.fidelityTeaserSub}>7/10 timbri - ancora 3 per la pizza gratis!</Text>
-        </View>
-        <Text style={{ color: C.oro, fontSize: 18 }}>›</Text>
+        <Text style={{ fontSize: 52 }}>🎁</Text>
       </TouchableOpacity>
     </ScrollView>
   );
 
-  const Menu = () => (
-    <View style={{ flex: 1 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.catScroll}>
-        {Object.keys(MENU).map(c => (
-          <TouchableOpacity key={c} style={[S.catPill, cat === c && S.catPillActive]} onPress={() => setCat(c)}>
-            <Text style={{ fontSize: 13 }}>{CAT_EMOJI[c]}</Text>
-            <Text style={[S.catPillText, cat === c && S.catPillTextActive]}>{c}</Text>
-          </TouchableOpacity>
-        ))}
+ const Menu = () => (
+    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.crema }}>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {Object.keys(MENU).map(c => (
+            <TouchableOpacity key={c} style={[S.catPill, cat === c && S.catPillActive]} onPress={() => setCat(c)}>
+              <Text style={{ fontSize: 11 }}>{CAT_EMOJI[c]}</Text>
+              <Text style={[S.catPillText, cat === c && S.catPillTextActive]}>{c}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
-      <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-        {MENU[cat].map(item => {
-          const qty = cart.find(c => c.id === item.id)?.qty || 0;
-          return (
-            <View key={item.id} style={S.card}>
-              <View style={S.cardLeft}>
-                <Text style={S.cardEmoji}>{CAT_EMOJI[cat]}</Text>
-              </View>
-              <View style={S.cardBody}>
-                <Text style={S.cardName}>{item.name}</Text>
-                {item.desc ? <Text style={S.cardDesc}>{item.desc}</Text> : null}
-                <View style={S.cardFooter}>
-                  <Text style={S.cardPrice}>€ {item.price.toFixed(2)}</Text>
-                  {qty === 0 ? (
-                    <TouchableOpacity style={S.addBtn} onPress={() => add(item)}>
-                      <Text style={S.addBtnText}>+ Aggiungi</Text>
+      {cat === 'Pane del Forno' && (
+        <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12, marginTop: 8 }}>
+          <Text style={{ fontSize: 13, color: '#8B6914', fontWeight: '700' }}>Pane fresco dal forno a legna</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria mattina o sera. Solo preordine per il giorno successivo.</Text>
+        </View>
+      )}
+      {MENU[cat].map(item => {
+        const qty = cart.find(c => c.id === item.id)?.qty || 0;
+        return (
+          <View key={item.id} style={S.card}>
+            <View style={[S.cardLeft, item.limitato && { backgroundColor: '#FFF8E7' }]}>
+              <Text style={S.cardEmoji}>{CAT_EMOJI[cat]}</Text>
+              {item.limitato && <Text style={{ fontSize: 8, color: C.oro, fontWeight: '700', marginTop: 2 }}>LIMITATO</Text>}
+            </View>
+            <View style={S.cardBody}>
+              <Text style={S.cardName}>{item.name}</Text>
+              {item.desc ? <Text style={S.cardDesc}>{item.desc}</Text> : null}
+              <View style={S.cardFooter}>
+                <Text style={S.cardPrice}>€ {item.price.toFixed(2)}</Text>
+                {qty === 0 ? (
+                  <TouchableOpacity style={S.addBtn} onPress={() => add(item)}>
+                    <Text style={S.addBtnText}>+ Aggiungi</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <View style={S.qtyCtrl}>
+                    <TouchableOpacity style={S.qtyMinus} onPress={() => remove(item.id)}>
+                      <Text style={S.qtyMinusText}>-</Text>
                     </TouchableOpacity>
-                  ) : (
-                    <View style={S.qtyCtrl}>
-                      <TouchableOpacity style={S.qtyMinus} onPress={() => remove(item.id)}>
-                        <Text style={S.qtyMinusText}>-</Text>
-                      </TouchableOpacity>
-                      <Text style={S.qtyN}>{qty}</Text>
-                      <TouchableOpacity style={S.qtyPlus} onPress={() => add(item)}>
-                        <Text style={S.qtyPlusText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                  )}
-                </View>
+                    <Text style={S.qtyN}>{qty}</Text>
+                    <TouchableOpacity style={S.qtyPlus} onPress={() => add(item)}>
+                      <Text style={S.qtyPlusText}>+</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </View>
             </View>
-          );
-        })}
-        <View style={{ height: 20 }} />
-      </ScrollView>
-    </View>
+          </View>
+        );
+      })}
+      <View style={{ height: 20 }} />
+    </ScrollView>
   );
 
   const Offers = () => (
     <ScrollView style={S.scroll}>
-      {[
-        { title: 'Combo Serata', desc: '2 pizze + 2 bibite', price: 18, old: 24, tag: '-25%', color: C.rosso },
-        { title: 'Lunch Express', desc: 'Pizza + bibita a pranzo', price: 9.5, old: 13, tag: '-27%', color: C.marrone },
-        { title: 'Famiglia Felice', desc: '4 pizze + 4 bibite + dolce', price: 38, old: 52, tag: '-27%', color: '#2C5A2E' },
-      ].map((o, i) => (
-        <View key={i} style={[S.offerCard, { backgroundColor: o.color }]}>
-          <View style={S.offerTag}><Text style={S.offerTagText}>{o.tag}</Text></View>
-          <Text style={S.offerTitle}>{o.title}</Text>
-          <Text style={S.offerDesc}>{o.desc}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 }}>
-            <Text style={S.offerPrice}>€ {o.price.toFixed(2)}</Text>
-            <Text style={S.offerOld}>€ {o.old.toFixed(2)}</Text>
-          </View>
-          <TouchableOpacity style={S.offerBtn}>
-            <Text style={S.offerBtnText}>Riscatta ora</Text>
-          </TouchableOpacity>
+      <View style={[S.offerCard, { backgroundColor: C.rosso }]}>
+        <Text style={S.offerTitle}>Combo Famiglia</Text>
+        <Text style={S.offerDesc}>4 pizze a scelta + 4 dolci a scelta</Text>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, marginTop: 12 }}>
+          <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OMAGGIO INCLUSO</Text>
+          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>4 bibite a scelta (escluse birre)</Text>
         </View>
-      ))}
-    </ScrollView>
-  );
-
-  const Fidelity = () => (
-    <ScrollView style={S.scroll}>
-      <View style={S.fidCard}>
-        <Text style={S.fidCardTitle}>La tua Fidelity Card</Text>
-        <Text style={S.fidPoints}>340</Text>
-        <Text style={S.fidPointsLabel}>PUNTI</Text>
-        <View style={{ width: '100%', height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 16 }} />
-        <Text style={S.fidStampsLabel}>TIMBRI - 7 / 10</Text>
-        <View style={S.stampsRow}>
-          {Array.from({ length: 10 }).map((_, i) => (
-            <View key={i} style={[S.stamp, i < 7 && S.stampOn]}>
-              <Text style={{ fontSize: i < 7 ? 18 : 12 }}>{i < 7 ? '🍕' : '·'}</Text>
-            </View>
-          ))}
-        </View>
-        <Text style={S.fidNote}>ancora 3 pizze per ottenere 1 pizza gratis!</Text>
+        <TouchableOpacity style={S.offerBtn} onPress={() => setTab('menu')}>
+          <Text style={S.offerBtnText}>Ordina ora</Text>
+        </TouchableOpacity>
       </View>
-      <View style={S.howCard}>
-        <Text style={[S.secLabel, { marginBottom: 12 }]}>COME FUNZIONA</Text>
-        {[
-          ['🍕', 'Ogni pizza ordinata = 1 timbro'],
-          ['🎁', '10 timbri = 1 pizza gratuita'],
-          ['⭐', 'Ogni 10 euro spesi = 10 punti'],
-          ['🏆', '100 punti = 5 euro di sconto'],
-        ].map(([e, t], i) => (
-          <View key={i} style={S.howRow}>
-            <Text style={{ fontSize: 22 }}>{e}</Text>
-            <Text style={S.howText}>{t}</Text>
-          </View>
-        ))}
+      <View style={[S.offerCard, { backgroundColor: C.marrone }]}>
+        <Text style={S.offerTitle}>Lunch Express</Text>
+        <Text style={S.offerDesc}>Pizza + bibita a pranzo ogni giorno</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 }}>
+          <Text style={S.offerPrice}>€ 9,50</Text>
+          <Text style={S.offerOld}>€ 13,00</Text>
+        </View>
+        <TouchableOpacity style={S.offerBtn} onPress={() => setTab('menu')}>
+          <Text style={S.offerBtnText}>Ordina ora</Text>
+        </TouchableOpacity>
+      </View>
+      <View style={[S.offerCard, { backgroundColor: '#2C5A2E' }]}>
+        <Text style={S.offerTitle}>Pane Fresco</Text>
+        <Text style={S.offerDesc}>Filoni artigianali dal forno a legna</Text>
+        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, marginTop: 12 }}>
+          <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OGNI MATTINA</Text>
+          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>Solo 4-6 filoni al giorno — prenota!</Text>
+        </View>
+        <TouchableOpacity style={S.offerBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
+          <Text style={S.offerBtnText}>Prenota ora</Text>
+        </TouchableOpacity>
       </View>
     </ScrollView>
   );
@@ -498,9 +687,8 @@ export default function App() {
   const screens = {
     home: <Home />,
     menu: <Menu />,
-    cart: <CartScreen cart={cart} cartTotal={cartTotal} ordered={ordered} setOrdered={setOrdered} setCart={setCart} setTab={setTab} handleOrder={handleOrder} />,
+    cart: <CartScreen cart={cart} cartTotal={cartTotal} ordered={ordered} setOrdered={setOrdered} setCart={setCart} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
     offers: <Offers />,
-    fidelity: <Fidelity />,
   };
 
   return (
@@ -532,10 +720,9 @@ export default function App() {
           { key: 'menu', icon: '🍕', label: 'Menu' },
           { key: 'cart', icon: '🛒', label: 'Ordine' },
           { key: 'offers', icon: '🎁', label: 'Offerte' },
-          { key: 'fidelity', icon: '⭐', label: 'Fidelity' },
         ].map(n => (
           <TouchableOpacity key={n.key} style={S.navBtn} onPress={() => setTab(n.key)}>
-            <Text style={{ fontSize: 20 }}>{n.icon}</Text>
+            <Text style={{ fontSize: 22 }}>{n.icon}</Text>
             <Text style={[S.navLabel, tab === n.key && S.navLabelOn]}>{n.label}</Text>
             {tab === n.key && <View style={S.navDot} />}
           </TouchableOpacity>
@@ -548,7 +735,7 @@ export default function App() {
 const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.crema },
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  header: { backgroundColor: C.marrone, paddingTop: 48 },
+  header: { backgroundColor: C.rosso, paddingTop: 48 },
   flagBar: { flexDirection: 'row', height: 5 },
   flagSeg: { flex: 1 },
   headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
@@ -557,37 +744,44 @@ const S = StyleSheet.create({
   cartBadge: { position: 'relative', padding: 4 },
   cartDot: { position: 'absolute', top: 0, right: 0, backgroundColor: C.oro, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   cartDotText: { fontSize: 10, fontWeight: 'bold', color: C.marrone },
-  heroBanner: { backgroundColor: C.rosso, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  loginHeader: { backgroundColor: C.rosso, paddingTop: 60, paddingBottom: 24, alignItems: 'center' },
+  loginLogo: { fontSize: 42, fontWeight: '900', color: C.crema, letterSpacing: -1 },
+  loginSub: { fontSize: 11, color: C.oro, letterSpacing: 4, marginTop: 2 },
+  loginBody: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
+  loginEmoji: { fontSize: 64, marginBottom: 16 },
+  loginTitle: { fontSize: 26, fontWeight: '900', color: C.marrone, marginBottom: 8 },
+  loginDesc: { fontSize: 14, color: C.grigio, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  loginBox: { width: '100%', gap: 12 },
+  heroBanner: { backgroundColor: C.marrone, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   heroGreeting: { fontSize: 13, color: 'rgba(242,232,213,0.7)', fontStyle: 'italic' },
   heroName: { fontSize: 32, fontWeight: '900', color: C.crema, letterSpacing: -1 },
   heroSlogan: { fontSize: 12, color: C.oro, fontStyle: 'italic', marginTop: 2 },
+  paneCard: { backgroundColor: '#FFF8E7', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 2, borderColor: C.oro },
+  paneTitolo: { fontSize: 15, fontWeight: '800', color: C.marrone },
+  paneSub: { fontSize: 11, color: C.grigio, marginTop: 2 },
+  paneBtn: { backgroundColor: C.oro, borderRadius: 10, padding: 10, alignItems: 'center', marginTop: 8 },
+  paneBtnText: { color: C.marrone, fontWeight: '800', fontSize: 13 },
   tilesRow: { flexDirection: 'row', gap: 8, marginBottom: 16 },
-  tile: { flex: 1, backgroundColor: 'white', borderRadius: 16, padding: 12, alignItems: 'center', shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
+  tile: { flex: 1, backgroundColor: 'white', borderRadius: 16, padding: 12, alignItems: 'center' },
   tileIcon: { fontSize: 20, marginBottom: 4 },
   tileTitle: { fontSize: 9, color: C.grigio, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 2 },
   tileVal: { fontSize: 10, color: C.marrone, fontWeight: '600', textAlign: 'center', lineHeight: 14 },
   secLabel: { fontSize: 10, letterSpacing: 3, color: C.oro, fontWeight: '700', marginBottom: 10, textTransform: 'uppercase' },
-  quickRow: { flexDirection: 'row', gap: 10, marginBottom: 16 },
-  quickBtn: { flex: 1, borderRadius: 20, padding: 18, alignItems: 'center', gap: 4, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 10, elevation: 4 },
-  quickLabel: { fontSize: 15, fontWeight: '800', color: 'white' },
-  quickSub: { fontSize: 10, color: 'rgba(255,255,255,0.7)' },
-  offerBig: { backgroundColor: C.marrone, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  offerBadge: { backgroundColor: C.oro, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
-  offerBadgeText: { fontSize: 10, fontWeight: '800', color: C.marrone },
+  quickBtn: { borderRadius: 20, padding: 20, alignItems: 'center', gap: 4 },
+  quickLabel: { fontSize: 18, fontWeight: '800', color: 'white' },
+  quickSub: { fontSize: 11, color: 'rgba(255,255,255,0.7)' },
+  offerBig: { backgroundColor: C.marrone, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   offerBigTitle: { fontSize: 20, fontWeight: '800', color: C.crema },
   offerBigDesc: { fontSize: 12, color: 'rgba(242,232,213,0.7)', marginTop: 2 },
-  offerBigPrice: { fontSize: 30, fontWeight: '900', color: C.oro },
-  offerBigOld: { fontSize: 14, color: 'rgba(242,232,213,0.4)', textDecorationLine: 'line-through', paddingBottom: 4 },
-  fidelityTeaser: { backgroundColor: 'white', borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 },
-  fidelityTeaserTitle: { fontSize: 14, fontWeight: '700', color: C.marrone },
-  fidelityTeaserSub: { fontSize: 11, color: C.grigio, marginTop: 2 },
+  offerBadge: { backgroundColor: C.oro, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
+  offerBadgeText: { fontSize: 10, fontWeight: '800', color: C.marrone },
   catScroll: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.crema },
   catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'white', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(139,26,26,0.1)' },
   catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
   catPillText: { fontSize: 11, color: C.grigio, fontWeight: '600' },
   catPillTextActive: { color: 'white' },
-  card: { flexDirection: 'row', backgroundColor: 'white', borderRadius: 16, marginBottom: 10, overflow: 'hidden', shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 6, elevation: 2 },
-  cardLeft: { width: 60, backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center' },
+  card: { flexDirection: 'row', backgroundColor: 'white', borderRadius: 16, marginBottom: 10, overflow: 'hidden' },
+  cardLeft: { width: 60, backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   cardEmoji: { fontSize: 28 },
   cardBody: { flex: 1, padding: 14 },
   cardName: { fontSize: 15, fontWeight: '700', color: C.marrone },
@@ -604,10 +798,18 @@ const S = StyleSheet.create({
   qtyPlusText: { fontSize: 16, fontWeight: '700', color: 'white' },
   formBox: { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 },
   formLabel: { fontSize: 11, color: C.grigio, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
-  typeBtn: { flex: 1, padding: 10, borderRadius: 10, alignItems: 'center', backgroundColor: C.cremaScuro },
+  typeBtn: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.cremaScuro, gap: 4 },
   typeBtnActive: { backgroundColor: C.rosso },
-  typeBtnText: { color: C.marrone, fontWeight: '700' },
+  typeBtnText: { color: C.marrone, fontWeight: '700', fontSize: 13 },
   typeBtnTextActive: { color: 'white' },
+  calBtn: { padding: 10, borderRadius: 12, alignItems: 'center', backgroundColor: C.cremaScuro, minWidth: 60 },
+  calBtnActive: { backgroundColor: C.rosso },
+  calGiorno: { fontSize: 11, fontWeight: '700', color: C.marrone },
+  calData: { fontSize: 10, color: C.grigio, marginTop: 2 },
+  pagBtn: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: 12, backgroundColor: C.cremaScuro },
+  pagBtnActive: { backgroundColor: C.rosso },
+  pagLabel: { fontSize: 14, fontWeight: '700', color: C.marrone },
+  pagSub: { fontSize: 11, color: C.grigio, marginTop: 1 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12, paddingHorizontal: 16 },
   emptyTitle: { fontSize: 20, fontWeight: '700', color: C.marrone },
   emptySub: { fontSize: 13, color: C.grigio, textAlign: 'center' },
@@ -622,26 +824,13 @@ const S = StyleSheet.create({
   checkoutBtn: { backgroundColor: C.rosso, borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 30 },
   checkoutText: { color: 'white', fontSize: 16, fontWeight: '800' },
   offerCard: { borderRadius: 20, padding: 22, marginBottom: 14 },
-  offerTag: { backgroundColor: C.oro, alignSelf: 'flex-start', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4, marginBottom: 8 },
-  offerTagText: { fontSize: 11, fontWeight: '800', color: C.marrone },
   offerTitle: { fontSize: 22, fontWeight: '800', color: C.crema },
   offerDesc: { fontSize: 12, color: 'rgba(242,232,213,0.75)', marginTop: 3 },
   offerPrice: { fontSize: 30, fontWeight: '900', color: C.oro },
   offerOld: { fontSize: 15, color: 'rgba(242,232,213,0.4)', textDecorationLine: 'line-through', paddingBottom: 4 },
   offerBtn: { backgroundColor: C.crema, borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 14 },
   offerBtnText: { fontWeight: '800', color: C.marrone, fontSize: 13 },
-  fidCard: { backgroundColor: C.marrone, borderRadius: 24, padding: 24, marginBottom: 16, alignItems: 'center' },
-  fidCardTitle: { fontSize: 16, fontWeight: '700', color: C.crema, marginBottom: 10 },
-  fidPoints: { fontSize: 52, fontWeight: '900', color: C.oro, lineHeight: 56 },
-  fidPointsLabel: { fontSize: 10, color: 'rgba(200,150,30,0.6)', letterSpacing: 3 },
-  fidStampsLabel: { fontSize: 10, color: 'rgba(242,232,213,0.5)', letterSpacing: 2, marginBottom: 12 },
-  stampsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 14 },
-  stamp: { width: 46, height: 46, borderRadius: 10, backgroundColor: 'rgba(255,255,255,0.07)', alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'rgba(200,150,30,0.25)' },
-  stampOn: { backgroundColor: C.rosso, borderColor: C.rosso },
-  fidNote: { fontSize: 11, color: 'rgba(242,232,213,0.5)', fontStyle: 'italic', textAlign: 'center' },
-  howCard: { backgroundColor: 'white', borderRadius: 20, padding: 20, marginBottom: 30 },
-  howRow: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: C.cremaScuro },
-  howText: { fontSize: 13, color: C.marrone, fontWeight: '500' },
+  errore: { color: C.rosso, textAlign: 'center', marginBottom: 12, fontWeight: '700' },
   navbar: { backgroundColor: C.marrone, flexDirection: 'row', paddingBottom: 24, paddingTop: 10, borderTopWidth: 3, borderTopColor: C.rosso },
   navBtn: { flex: 1, alignItems: 'center', gap: 2 },
   navLabel: { fontSize: 9, color: 'rgba(242,232,213,0.35)', letterSpacing: 0.5, fontWeight: '600' },

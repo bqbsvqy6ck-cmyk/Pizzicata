@@ -852,4 +852,5 @@ const S = StyleSheet.create({
   navLabel: { fontSize: 9, color: 'rgba(242,232,213,0.35)', letterSpacing: 0.5, fontWeight: '600' },
   navLabelOn: { color: C.oro },
   navDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.oro, marginTop: 2 },
-});
+});/ /   u p d a t e  
+ 

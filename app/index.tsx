@@ -183,19 +183,28 @@ const ORARI_SERA_FULL = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '
 const ORARI_PRANZO_FULL = ['12:30', '13:00', '13:30', '14:00'];
 const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
 
-const getOrariDisponibili = (isOggi) => {
+// Restituisce gli orari disponibili per "oggi" in base all'ora corrente
+// Per i giorni futuri restituisce sempre tutti gli orari
+const getOrariDisponibili = (isOggi: boolean) => {
   if (!isOggi) return [...ORARI_PRANZO_FULL, ...ORARI_SERA_FULL];
   const ora = new Date().getHours();
   const minuti = new Date().getMinutes();
   const oraDecimale = ora + minuti / 60;
+  // Pranzo disponibile: tra 12:00 e 14:30 (apertura 12:00, primo slot 30min dopo = 12:30)
+  // Sera disponibile: tra 18:00 e 22:45 (apertura 18:00, primo slot 30min dopo = 18:30)
   if (oraDecimale < 14.5) {
+    // Siamo ancora nel pranzo o prima: mostra pranzo filtrato + sera
     const pranziFiltrati = ORARI_PRANZO_FULL.filter(o => {
       const [h, m] = o.split(':').map(Number);
-      return (h + m / 60) > oraDecimale + 0.3;
+      return (h + m / 60) > oraDecimale + 0.3; // almeno 20 min nel futuro
     });
     return [...pranziFiltrati, ...ORARI_SERA_FULL];
   }
-  if (oraDecimale < 18.5) return ORARI_SERA_FULL;
+  if (oraDecimale < 18.5) {
+    // Pranzo finito, sera non ancora aperta
+    return ORARI_SERA_FULL;
+  }
+  // Siamo a cena: mostra solo orari sera futuri
   return ORARI_SERA_FULL.filter(o => {
     const [h, m] = o.split(':').map(Number);
     return (h + m / 60) > oraDecimale + 0.3;
@@ -214,11 +223,14 @@ const getCalendario = () => {
       label: i === 0 ? 'Oggi' : nomiGiorni[d.getDay()],
       data: d.getDate() + ' ' + nomiMesi[d.getMonth()],
       full: d.toLocaleDateString('it-IT'),
+      isPranzo: true,
+      isSera: true,
     });
   }
   return giorni;
 };
 
+// LOGIN SCREEN
 function LoginScreen({ onLogin }) {
   const [tel, setTel] = useState('');
   const [nome, setNome] = useState('');
@@ -265,7 +277,13 @@ function LoginScreen({ onLogin }) {
         {step === 1 ? (
           <View style={S.loginBox}>
             <Text style={S.formLabel}>NUMERO DI TELEFONO</Text>
-            <input style={inputStyle} placeholder="333 1234567" value={tel} onChange={(e) => setTel(e.target.value)} type="tel" />
+            <input
+              style={inputStyle}
+              placeholder="333 1234567"
+              value={tel}
+              onChange={(e) => setTel(e.target.value)}
+              type="tel"
+            />
             {errore ? <Text style={S.errore}>{errore}</Text> : null}
             <TouchableOpacity style={S.checkoutBtn} onPress={avanti}>
               <Text style={S.checkoutText}>{loading ? 'Caricamento...' : 'Continua'}</Text>
@@ -274,7 +292,12 @@ function LoginScreen({ onLogin }) {
         ) : (
           <View style={S.loginBox}>
             <Text style={S.formLabel}>COME TI CHIAMI?</Text>
-            <input style={inputStyle} placeholder="Mario Rossi" value={nome} onChange={(e) => setNome(e.target.value)} />
+            <input
+              style={inputStyle}
+              placeholder="Mario Rossi"
+              value={nome}
+              onChange={(e) => setNome(e.target.value)}
+            />
             {errore ? <Text style={S.errore}>{errore}</Text> : null}
             <TouchableOpacity style={S.checkoutBtn} onPress={registra}>
               <Text style={S.checkoutText}>{loading ? 'Registrazione...' : 'Accedi'}</Text>
@@ -299,7 +322,10 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
 
   const haPane = cart.some(i => i.id >= 200);
   const calendario = getCalendario().filter((_, i) => !haPane || i > 0);
-  const ORARI = getOrariDisponibili(giornoSelezionato === 0 && !haPane);
+
+  // Orari dipendono dal giorno selezionato: oggi → logica orario corrente, altri → tutti
+  const isOggi = giornoSelezionato === 0 && !haPane; // pane: sempre giorno dopo
+  const ORARI = getOrariDisponibili(isOggi);
   const [orario, setOrario] = useState(() => getOrariDisponibili(true)[0] || '18:30');
 
   useEffect(() => {
@@ -308,6 +334,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
   }, [giornoSelezionato, haPane]);
 
   const spedizioneExtra = tipoOrdine === 'domicilio' ? 2.5 : 0;
+
   const addQty = (id) => setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty + 1 } : c));
   const removeQty = (id) => setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
 
@@ -341,6 +368,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
         </View>
       ) : (
         <>
+          {/* Articoli carrello con +/- */}
           {cart.map(item => (
             <View key={item.id} style={S.cartCard}>
               <Text style={{ fontSize: 24 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
@@ -350,7 +378,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
               </View>
               <View style={S.qtyCtrl}>
                 <TouchableOpacity style={S.qtyMinus} onPress={() => removeQty(item.id)}>
-                  <Text style={S.qtyMinusText}>-</Text>
+                  <Text style={S.qtyMinusText}>−</Text>
                 </TouchableOpacity>
                 <Text style={S.qtyN}>{item.qty}</Text>
                 <TouchableOpacity style={S.qtyPlus} onPress={() => addQty(item.id)}>
@@ -360,13 +388,15 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           ))}
 
+          {/* Banner info pane */}
           {haPane && (
             <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12 }}>
-              <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>Ordine con pane del forno</Text>
+              <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Ordine con pane del forno</Text>
               <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3 }}>Il pane viene preparato il giorno prima — scegli la data di domani o successiva.</Text>
             </View>
           )}
 
+          {/* Tipo ordine */}
           <View style={S.formBox}>
             <Text style={S.formLabel}>TIPO ORDINE</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -381,6 +411,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           </View>
 
+          {/* Orario ritiro pane (solo se asporto + pane) */}
           {haPane && tipoOrdine === 'asporto' && (
             <View style={S.formBox}>
               <Text style={S.formLabel}>ORARIO RITIRO PANE</Text>
@@ -394,6 +425,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           )}
 
+          {/* Indirizzo */}
           {tipoOrdine === 'domicilio' && (
             <View style={S.formBox}>
               <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA *</Text>
@@ -402,6 +434,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           )}
 
+          {/* Calendario */}
           <View style={S.formBox}>
             <Text style={S.formLabel}>GIORNO</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
@@ -416,6 +449,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </ScrollView>
           </View>
 
+          {/* Orario consegna (non per pane asporto) */}
           {!(haPane && tipoOrdine === 'asporto') && (
             <View style={S.formBox}>
               <Text style={S.formLabel}>ORARIO</Text>
@@ -425,6 +459,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           )}
 
+          {/* Pagamento */}
           <View style={S.formBox}>
             <Text style={S.formLabel}>METODO DI PAGAMENTO</Text>
             <View style={{ gap: 8 }}>
@@ -445,6 +480,7 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             </View>
           </View>
 
+          {/* Note */}
           <View style={S.formBox}>
             <Text style={S.formLabel}>NOTE E ALLERGIE</Text>
             <textarea style={textareaStyle} placeholder="Allergie, intolleranze, richieste speciali..." value={note} onChange={(e) => setNote(e.target.value)} />
@@ -534,7 +570,7 @@ export default function App() {
       pagamento: pagamento,
     }]);
     if (error) {
-      alert('Errore ordine: ' + error.message);
+      alert('Errore: ' + error.message);
       return;
     }
     if (indirizzo && utente.indirizzo !== indirizzo) {
@@ -569,7 +605,7 @@ export default function App() {
           </View>
         </View>
         <TouchableOpacity style={S.paneBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
-          <Text style={S.paneBtnText}>Prenota il tuo filone</Text>
+          <Text style={S.paneBtnText}>Prenota il tuo filone →</Text>
         </TouchableOpacity>
       </View>
 
@@ -625,7 +661,7 @@ export default function App() {
       {cat === 'Pane del Forno' && (
         <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12, marginTop: 8 }}>
           <Text style={{ fontSize: 13, color: '#8B6914', fontWeight: '700' }}>Pane fresco dal forno a legna</Text>
-          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria o consegna a domicilio (+2.50). Solo preordine per il giorno successivo.</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria o consegna a domicilio (+€2.50). Solo preordine per il giorno successivo.</Text>
         </View>
       )}
       {MENU[cat].map(item => {
@@ -792,6 +828,9 @@ const S = StyleSheet.create({
   offerBig: { backgroundColor: C.marrone, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   offerBigTitle: { fontSize: 20, fontWeight: '800', color: C.crema },
   offerBigDesc: { fontSize: 12, color: 'rgba(242,232,213,0.7)', marginTop: 2 },
+  offerBadge: { backgroundColor: C.oro, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
+  offerBadgeText: { fontSize: 10, fontWeight: '800', color: C.marrone },
+  catScroll: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.crema },
   catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'white', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(139,26,26,0.1)' },
   catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
   catPillText: { fontSize: 11, color: C.grigio, fontWeight: '600' },
@@ -852,5 +891,4 @@ const S = StyleSheet.create({
   navLabel: { fontSize: 9, color: 'rgba(242,232,213,0.35)', letterSpacing: 0.5, fontWeight: '600' },
   navLabelOn: { color: C.oro },
   navDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.oro, marginTop: 2 },
-});/ /   u p d a t e  
- 
+});

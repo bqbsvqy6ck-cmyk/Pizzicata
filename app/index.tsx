@@ -14,8 +14,8 @@ const C = {
 
 const MENU = {
   'Pane del Forno': [
-    { id: 200, name: 'Filone Classico', desc: 'Pane artigianale 500gr, cotto nel forno a legna. Disponibile ogni mattina — max 4-6 filoni al giorno', price: 1.50, limitato: true },
-    { id: 201, name: 'Filone Integrale', desc: 'Pane integrale artigianale 500gr, dal forno a legna. Disponibile ogni mattina — max 4-6 filoni al giorno', price: 2.00, limitato: true },
+    { id: 200, name: 'Filone Classico', desc: 'Pane artigianale 500gr, cotto nel forno a legna. Disponibile ogni mattina.', price: 1.50, limitato: true },
+    { id: 201, name: 'Filone Integrale', desc: 'Pane integrale artigianale 500gr, dal forno a legna. Disponibile ogni mattina.', price: 2.00, limitato: true },
   ],
   'Pizze Rosse': [
     { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.50 },
@@ -327,6 +327,8 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
   const isOggi = giornoSelezionato === 0 && !haPane; // pane: sempre giorno dopo
   const ORARI = getOrariDisponibili(isOggi);
   const [orario, setOrario] = useState(() => getOrariDisponibili(true)[0] || '18:30');
+  const [oraCustom, setOraCustom] = useState('19');
+  const [minCustom, setMinCustom] = useState('00');
 
   useEffect(() => {
     const nuovi = getOrariDisponibili(giornoSelezionato === 0 && !haPane);
@@ -341,7 +343,8 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
   const doOrder = () => {
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
     setErrore('');
-    handleOrder({ indirizzo, note, tipoOrdine, orario, pagamento, giorno: calendario[giornoSelezionato].full });
+    const orarioFinale = orario === 'custom' ? `${oraCustom}:${minCustom}` : orario;
+    handleOrder({ indirizzo, note, tipoOrdine, orario: orarioFinale, pagamento, giorno: calendario[giornoSelezionato].full });
   };
 
   if (ordered) return (
@@ -454,8 +457,21 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
             <View style={S.formBox}>
               <Text style={S.formLabel}>ORARIO</Text>
               <select value={orario} onChange={(e) => setOrario(e.target.value)} style={{ ...inputStyle, height: 44 }}>
+                {isOggi && <option value="Appena possibile">Appena possibile</option>}
+                <option value="custom">Scegli un orario...</option>
                 {ORARI.map(o => <option key={o} value={o}>{o}</option>)}
               </select>
+              {orario === 'custom' && (
+                <View style={{ flexDirection: 'row', gap: 8, marginTop: 8, alignItems: 'center' }}>
+                  <select value={oraCustom} onChange={(e) => { setOraCustom(e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                    {Array.from({ length: 11 }, (_, k) => k + 12).map(h => <option key={h} value={String(h).padStart(2, '0')}>{String(h).padStart(2, '0')}</option>)}
+                  </select>
+                  <Text style={{ fontSize: 20, fontWeight: '700', color: C.marrone }}>:</Text>
+                  <select value={minCustom} onChange={(e) => { setMinCustom(e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                    {['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55'].map(m => <option key={m} value={m}>{m}</option>)}
+                  </select>
+                </View>
+              )}
             </View>
           )}
 
@@ -528,7 +544,19 @@ const textareaStyle = {
 };
 
 export default function App() {
-  const [utente, setUtente] = useState(null);
+  const [utente, setUtenteRaw] = useState(() => {
+    try {
+      const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('pizzicata_utente') : null;
+      return saved ? JSON.parse(saved) : null;
+    } catch { return null; }
+  });
+  const setUtente = (u) => {
+    setUtenteRaw(u);
+    try {
+      if (u) localStorage.setItem('pizzicata_utente', JSON.stringify(u));
+      else localStorage.removeItem('pizzicata_utente');
+    } catch {}
+  };
   const [tab, setTab] = useState('home');
   const [cat, setCat] = useState('Pane del Forno');
   const [cart, setCart] = useState([]);
@@ -601,7 +629,7 @@ export default function App() {
           <Text style={{ fontSize: 28 }}>🍞</Text>
           <View>
             <Text style={S.paneTitolo}>Pane del Forno a Legna</Text>
-            <Text style={S.paneSub}>Fresco ogni mattina — solo 4-6 filoni al giorno!</Text>
+            <Text style={S.paneSub}>Fresco ogni mattina dal forno a legna!</Text>
           </View>
         </View>
         <TouchableOpacity style={S.paneBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
@@ -610,21 +638,24 @@ export default function App() {
       </View>
 
       <View style={S.tilesRow}>
-        <View style={S.tile}>
+        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=Corso+Eusebio+Giambone+8%2Fb+Torino', '_blank')}>
           <Text style={S.tileIcon}>📍</Text>
           <Text style={S.tileTitle}>Dove siamo</Text>
           <Text style={S.tileVal}>C.so Giambone 8/b{'\n'}Torino</Text>
-        </View>
+        </TouchableOpacity>
         <View style={S.tile}>
           <Text style={S.tileIcon}>🕐</Text>
           <Text style={S.tileTitle}>Orari</Text>
           <Text style={S.tileVal}>LUN-DOM{'\n'}12:00-14:30{'\n'}18:00-22:45</Text>
         </View>
-        <View style={S.tile}>
+        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => {
+          const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310');
+          window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310';
+        }}>
           <Text style={S.tileIcon}>📞</Text>
           <Text style={S.tileTitle}>Telefono</Text>
           <Text style={S.tileVal}>331 5695959{'\n'}011 0362310</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <Text style={S.secLabel}>ORDINA ORA</Text>
@@ -730,7 +761,7 @@ export default function App() {
         <Text style={S.offerDesc}>Filoni artigianali dal forno a legna</Text>
         <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, marginTop: 12 }}>
           <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OGNI MATTINA</Text>
-          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>Solo 4-6 filoni al giorno — prenota!</Text>
+          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>Prenota il tuo filone fresco!</Text>
         </View>
         <TouchableOpacity style={S.offerBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
           <Text style={S.offerBtnText}>Prenota ora</Text>

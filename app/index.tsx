@@ -13,10 +13,6 @@ const C = {
 };
 
 const MENU = {
-  'Pane del Forno': [
-    { id: 200, name: 'Filone Classico', desc: 'Pane artigianale 500gr, cotto nel forno a legna. Disponibile ogni mattina.', price: 1.50, limitato: true },
-    { id: 201, name: 'Filone Integrale', desc: 'Pane integrale artigianale 500gr, dal forno a legna. Disponibile ogni mattina.', price: 2.00, limitato: true },
-  ],
   'Pizze Rosse': [
     { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.50 },
     { id: 2, name: 'Marinara', desc: "Pomodoro, Olio all'aglio, Origano", price: 5.50 },
@@ -111,6 +107,10 @@ const MENU = {
     { id: 77, name: 'Ultra Pork Burger', desc: 'Hamburger di Fasona, Pulled Pork, Doppio Bacon, Doppio Cheddar, BBQ', price: 20.00 },
     { id: 78, name: 'Menu Panino', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Ketchup + patatine e bibita', price: 14.00 },
   ],
+  'Pane del Forno': [
+    { id: 200, name: 'Filone Classico', desc: 'Pane artigianale 500gr, cotto nel forno a legna. Disponibile ogni mattina.', price: 1.50, limitato: true },
+    { id: 201, name: 'Filone Integrale', desc: 'Pane integrale artigianale 500gr, dal forno a legna. Disponibile ogni mattina.', price: 2.00, limitato: true },
+  ],
   'Farinata': [
     { id: 79, name: 'Classica', desc: '', price: 3.50 },
     { id: 80, name: 'con Burrata', desc: '', price: 7.00 },
@@ -179,6 +179,11 @@ const CAT_EMOJI = {
   'Farinata': '🫓', 'Fritti': '🍟', 'Dolci': '🍰', 'Bevande': '🥤',
 };
 
+// Helper combo: classifica un articolo per la Combo Famiglia
+const isPizzaCombo = (id) => id >= 1 && id <= 66;       // tutte le pizze
+const isDolceCombo = (id) => id >= 102 && id <= 113;    // dolci
+const isBibitaCombo = (id) => id >= 114 && id <= 122;   // bibite analcoliche (no birre/spritz)
+
 const ORARI_SERA_FULL = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
 const ORARI_PRANZO_FULL = ['12:30', '13:00', '13:30', '14:00'];
 const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
@@ -245,7 +250,7 @@ function LoginScreen({ onLogin }) {
     const { data } = await supabase.from('clienti').select('*').eq('telefono', clean).single();
     setLoading(false);
     if (data) {
-      onLogin({ telefono: clean, nome: data.nome, indirizzo: data.indirizzo || '' });
+      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '' });
     } else {
       setStep(2);
       setErrore('');
@@ -258,7 +263,7 @@ function LoginScreen({ onLogin }) {
     setLoading(true);
     await supabase.from('clienti').insert([{ telefono: clean, nome: nome.trim() }]);
     setLoading(false);
-    onLogin({ telefono: clean, nome: nome.trim(), indirizzo: '' });
+    onLogin({ telefono: clean, nome: nome.trim(), cognome: '', indirizzo: '', pagamento: 'contanti', allergie: '' });
   };
 
   return (
@@ -312,11 +317,11 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, handleOrder, utente }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState('');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
-  const [pagamento, setPagamento] = useState('contanti');
+  const [pagamento, setPagamento] = useState(utente.pagamento || 'contanti');
   const [giornoSelezionato, setGiornoSelezionato] = useState(0);
   const [errore, setErrore] = useState('');
 
@@ -341,6 +346,15 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
   const removeQty = (id) => setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
 
   const doOrder = () => {
+    if (combo) {
+      const np = cart.filter(c => isPizzaCombo(c.id)).reduce((s, c) => s + c.qty, 0);
+      const nd = cart.filter(c => isDolceCombo(c.id)).reduce((s, c) => s + c.qty, 0);
+      const nb = cart.filter(c => isBibitaCombo(c.id)).reduce((s, c) => s + c.qty, 0);
+      if (np < combo.pizze || nd < combo.dolci || nb < combo.bibite) {
+        setErrore(`Combo incompleta: servono ${combo.pizze} pizze (${np}), ${combo.dolci} dolci (${nd}), ${combo.bibite} bibite (${nb}).`);
+        return;
+      }
+    }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
     setErrore('');
     const orarioFinale = orario === 'custom' ? `${oraCustom}:${minCustom}` : orario;
@@ -507,8 +521,14 @@ function CartScreen({ cart, setCart, cartTotal, ordered, setOrdered, setTab, han
           <View style={S.totalCard}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={S.totalRow}>Subtotale</Text>
-              <Text style={S.totalRow}>€ {cartTotal.toFixed(2)}</Text>
+              <Text style={S.totalRow}>€ {cartTotalRaw.toFixed(2)}</Text>
             </View>
+            {combo && scontoCombo > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[S.totalRow, { color: '#2C5A2E' }]}>🎁 Bibite combo omaggio</Text>
+                <Text style={[S.totalRow, { color: '#2C5A2E' }]}>− € {scontoCombo.toFixed(2)}</Text>
+              </View>
+            )}
             {tipoOrdine === 'domicilio' && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
                 <Text style={S.totalRow}>Consegna</Text>
@@ -558,10 +578,11 @@ export default function App() {
     } catch {}
   };
   const [tab, setTab] = useState('home');
-  const [cat, setCat] = useState('Pane del Forno');
+  const [cat, setCat] = useState('Pizze Rosse');
   const [cart, setCart] = useState([]);
   const [ordered, setOrdered] = useState(false);
   const [ora, setOra] = useState(new Date());
+  const [combo, setCombo] = useState(null); // null o { tipo:'famiglia', pizze:4, dolci:4, bibite:4 }
 
   useEffect(() => {
     const t = setInterval(() => setOra(new Date()), 60000);
@@ -581,7 +602,20 @@ export default function App() {
   );
 
   const cartN = cart.reduce((s, i) => s + i.qty, 0);
-  const cartTotal = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  const cartTotalRaw = cart.reduce((s, i) => s + i.price * i.qty, 0);
+  // Sconto combo: le prime 4 bibite analcoliche sono gratis
+  let scontoCombo = 0;
+  if (combo) {
+    let bibiteGratis = 0;
+    for (const c of cart) {
+      if (isBibitaCombo(c.id)) {
+        for (let k = 0; k < c.qty; k++) {
+          if (bibiteGratis < combo.bibite) { scontoCombo += c.price; bibiteGratis++; }
+        }
+      }
+    }
+  }
+  const cartTotal = Math.max(0, cartTotalRaw - scontoCombo);
 
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
     const spedizione = tipoOrdine === 'domicilio' ? 2.5 : 0;
@@ -591,7 +625,7 @@ export default function App() {
       items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
       totale: cartTotal + spedizione,
       stato: 'nuovo',
-      note: note,
+      note: combo ? ('🎁 COMBO FAMIGLIA (4 pizze + 4 dolci + 4 bibite omaggio) ' + (note || '')).trim() : note,
       indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
       tipo: tipoOrdine,
       orario_consegna: giorno + ' - ' + orario,
@@ -604,6 +638,7 @@ export default function App() {
     if (indirizzo && utente.indirizzo !== indirizzo) {
       await supabase.from('clienti').update({ indirizzo }).eq('telefono', utente.telefono);
     }
+    setCombo(null);
     setOrdered(true);
   };
 
@@ -612,18 +647,26 @@ export default function App() {
 
   const Home = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-      <View style={S.heroBanner}>
-        <View>
+      <TouchableOpacity style={S.heroBanner} activeOpacity={0.85} onPress={() => setTab('profilo')}>
+        <View style={{ flex: 1 }}>
           <Text style={S.heroGreeting}>Ciao {utente.nome}!</Text>
-          <Text style={S.heroName}>Pizzicata</Text>
-          <Text style={S.heroSlogan}>e che pizza... ragazzi!</Text>
+          <Text style={S.heroName}>Il tuo profilo</Text>
+          <Text style={S.heroSlogan}>Tocca per modificare i tuoi dati →</Text>
         </View>
         <View style={{ alignItems: 'flex-end' }}>
           <Text style={{ fontSize: 28, color: C.oro, fontWeight: '900' }}>{oraStr}</Text>
           <Text style={{ fontSize: 10, color: 'rgba(242,232,213,0.6)', marginTop: 2, textAlign: 'right' }}>{dataStr}</Text>
         </View>
-      </View>
+      </TouchableOpacity>
 
+      <Text style={S.secLabel}>ORDINA ORA</Text>
+      <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso, marginBottom: 16 }]} onPress={() => setTab('menu')}>
+        <Text style={{ fontSize: 32 }}>🍕</Text>
+        <Text style={S.quickLabel}>Ordina ora</Text>
+        <Text style={S.quickSub}>Domicilio o asporto</Text>
+      </TouchableOpacity>
+
+      <Text style={S.secLabel}>PANE FRESCO</Text>
       <View style={S.paneCard}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
           <Text style={{ fontSize: 28 }}>🍞</Text>
@@ -637,8 +680,19 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <View style={S.tilesRow}>
-        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=Corso+Eusebio+Giambone+8%2Fb+Torino', '_blank')}>
+      <Text style={S.secLabel}>OFFERTE</Text>
+      <TouchableOpacity style={S.offerBig} onPress={() => setTab('offers')}>
+        <View>
+          <Text style={S.offerBigTitle}>Combo Famiglia</Text>
+          <Text style={S.offerBigDesc}>4 pizze + 4 dolci a scelta</Text>
+          <Text style={{ color: C.oro, fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>4 bibite in omaggio!</Text>
+        </View>
+        <Text style={{ fontSize: 52 }}>🎁</Text>
+      </TouchableOpacity>
+
+      <Text style={S.secLabel}>INFORMAZIONI</Text>
+      <View style={[S.tilesRow, { marginBottom: 24 }]}>
+        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
           <Text style={S.tileIcon}>📍</Text>
           <Text style={S.tileTitle}>Dove siamo</Text>
           <Text style={S.tileVal}>C.so Giambone 8/b{'\n'}Torino</Text>
@@ -657,28 +711,44 @@ export default function App() {
           <Text style={S.tileVal}>331 5695959{'\n'}011 0362310</Text>
         </TouchableOpacity>
       </View>
-
-      <Text style={S.secLabel}>ORDINA ORA</Text>
-      <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso, marginBottom: 16 }]} onPress={() => setTab('menu')}>
-        <Text style={{ fontSize: 32 }}>🍕</Text>
-        <Text style={S.quickLabel}>Ordina ora</Text>
-        <Text style={S.quickSub}>Domicilio o asporto</Text>
-      </TouchableOpacity>
-
-      <Text style={S.secLabel}>OFFERTE</Text>
-      <TouchableOpacity style={S.offerBig} onPress={() => setTab('offers')}>
-        <View>
-          <Text style={S.offerBigTitle}>Combo Famiglia</Text>
-          <Text style={S.offerBigDesc}>4 pizze + 4 dolci a scelta</Text>
-          <Text style={{ color: C.oro, fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>4 bibite in omaggio!</Text>
-        </View>
-        <Text style={{ fontSize: 52 }}>🎁</Text>
-      </TouchableOpacity>
     </ScrollView>
   );
 
-  const Menu = () => (
+  const Menu = () => {
+    const comboPizze = combo ? cart.filter(c => isPizzaCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
+    const comboDolci = combo ? cart.filter(c => isDolceCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
+    const comboBibite = combo ? cart.filter(c => isBibitaCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
+    return (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      {combo && (
+        <View style={{ backgroundColor: C.marrone, borderRadius: 16, padding: 14, marginBottom: 12 }}>
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+            <Text style={{ color: C.crema, fontWeight: '800', fontSize: 15 }}>🎁 Combo Famiglia</Text>
+            <TouchableOpacity onPress={() => setCombo(null)}>
+              <Text style={{ color: 'rgba(242,232,213,0.6)', fontSize: 12 }}>Annulla ✕</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: comboPizze >= combo.pizze ? '#2C5A2E' : 'rgba(255,255,255,0.12)', borderRadius: 10, padding: 8, alignItems: 'center' }}>
+              <Text style={{ color: 'white', fontSize: 11 }}>Pizze</Text>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{comboPizze}/{combo.pizze}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: comboDolci >= combo.dolci ? '#2C5A2E' : 'rgba(255,255,255,0.12)', borderRadius: 10, padding: 8, alignItems: 'center' }}>
+              <Text style={{ color: 'white', fontSize: 11 }}>Dolci</Text>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{comboDolci}/{combo.dolci}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: comboBibite >= combo.bibite ? '#2C5A2E' : 'rgba(255,255,255,0.12)', borderRadius: 10, padding: 8, alignItems: 'center' }}>
+              <Text style={{ color: 'white', fontSize: 11 }}>Bibite 🎁</Text>
+              <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{comboBibite}/{combo.bibite}</Text>
+            </View>
+          </View>
+          <Text style={{ color: 'rgba(242,232,213,0.7)', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+            {comboPizze >= combo.pizze && comboDolci >= combo.dolci && comboBibite >= combo.bibite
+              ? '✓ Combo completa! Vai al carrello per ordinare.'
+              : 'Aggiungi i prodotti dal menù. Le bibite sono in omaggio!'}
+          </Text>
+        </View>
+      )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.crema }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {Object.keys(MENU).map(c => (
@@ -730,7 +800,8 @@ export default function App() {
       })}
       <View style={{ height: 20 }} />
     </ScrollView>
-  );
+    );
+  };
 
   const Offers = () => (
     <ScrollView style={S.scroll}>
@@ -741,8 +812,8 @@ export default function App() {
           <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OMAGGIO INCLUSO</Text>
           <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>4 bibite a scelta (escluse birre)</Text>
         </View>
-        <TouchableOpacity style={S.offerBtn} onPress={() => setTab('menu')}>
-          <Text style={S.offerBtnText}>Ordina ora</Text>
+        <TouchableOpacity style={S.offerBtn} onPress={() => { setCombo({ tipo: 'famiglia', pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); setTab('menu'); }}>
+          <Text style={S.offerBtnText}>Inizia la combo</Text>
         </TouchableOpacity>
       </View>
       <View style={[S.offerCard, { backgroundColor: C.marrone }]}>
@@ -770,11 +841,83 @@ export default function App() {
     </ScrollView>
   );
 
+  const Profilo = () => {
+    const [pNome, setPNome] = useState(utente.nome || '');
+    const [pCognome, setPCognome] = useState(utente.cognome || '');
+    const [pIndirizzo, setPIndirizzo] = useState(utente.indirizzo || '');
+    const [pPagamento, setPPagamento] = useState(utente.pagamento || 'contanti');
+    const [pAllergie, setPAllergie] = useState(utente.allergie || '');
+    const [salvato, setSalvato] = useState(false);
+    const [salvando, setSalvando] = useState(false);
+
+    const salvaProfilo = async () => {
+      setSalvando(true);
+      const { error } = await supabase.from('clienti').update({
+        nome: pNome.trim(),
+        cognome: pCognome.trim(),
+        indirizzo: pIndirizzo.trim(),
+        pagamento: pPagamento,
+        allergie: pAllergie.trim(),
+      }).eq('telefono', utente.telefono);
+      setSalvando(false);
+      if (error) { alert('Errore: ' + error.message); return; }
+      setUtente({ ...utente, nome: pNome.trim(), cognome: pCognome.trim(), indirizzo: pIndirizzo.trim(), pagamento: pPagamento, allergie: pAllergie.trim() });
+      setSalvato(true);
+      setTimeout(() => setSalvato(false), 2000);
+    };
+
+    const inputStyleP = { width: '100%', padding: 12, fontSize: 15, borderRadius: 10, border: '1px solid #E8D5B0', backgroundColor: 'white', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
+
+    return (
+      <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={() => setTab('home')} style={{ marginBottom: 12 }}>
+          <Text style={{ color: C.rosso, fontSize: 15, fontWeight: '700' }}>← Indietro</Text>
+        </TouchableOpacity>
+        <Text style={{ fontSize: 24, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>Il tuo profilo</Text>
+        <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 20 }}>I tuoi dati vengono salvati per i prossimi ordini.</Text>
+
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>NOME</Text>
+          <input style={inputStyleP} value={pNome} onChange={(e) => setPNome(e.target.value)} placeholder="Nome" />
+        </View>
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>COGNOME</Text>
+          <input style={inputStyleP} value={pCognome} onChange={(e) => setPCognome(e.target.value)} placeholder="Cognome" />
+        </View>
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>INDIRIZZO</Text>
+          <input style={inputStyleP} value={pIndirizzo} onChange={(e) => setPIndirizzo(e.target.value)} placeholder="Via, numero civico..." />
+        </View>
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>METODO DI PAGAMENTO PREFERITO</Text>
+          <select value={pPagamento} onChange={(e) => setPPagamento(e.target.value)} style={{ ...inputStyleP, height: 44 }}>
+            <option value="contanti">Contanti</option>
+            <option value="pos">POS (Bancomat/Carta)</option>
+            <option value="online">Online</option>
+          </select>
+        </View>
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE</Text>
+          <textarea style={{ ...inputStyleP, minHeight: 70, resize: 'vertical' }} value={pAllergie} onChange={(e) => setPAllergie(e.target.value)} placeholder="Es. glutine, lattosio, frutta secca..." />
+        </View>
+
+        <TouchableOpacity style={[S.checkoutBtn, { backgroundColor: salvato ? '#2C5A2E' : C.rosso }]} onPress={salvaProfilo} disabled={salvando}>
+          <Text style={S.checkoutText}>{salvando ? 'Salvataggio...' : salvato ? '✓ Salvato!' : 'Salva profilo'}</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={{ marginTop: 16, alignItems: 'center', padding: 12 }} onPress={() => { setUtente(null); }}>
+          <Text style={{ color: C.grigio, fontSize: 14 }}>Esci dall'account</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    );
+  };
+
   const screens = {
     home: <Home />,
     menu: <Menu />,
-    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
+    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
     offers: <Offers />,
+    profilo: <Profilo />,
   };
 
   return (
@@ -821,12 +964,12 @@ export default function App() {
 const S = StyleSheet.create({
   root: { flex: 1, backgroundColor: C.crema },
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  header: { backgroundColor: C.rosso, paddingTop: 48 },
-  flagBar: { flexDirection: 'row', height: 20, borderTopWidth: 2, borderBottomWidth: 2, borderColor: C.oro },
+  header: { backgroundColor: C.rosso, paddingTop: 40 },
+  flagBar: { flexDirection: 'row', height: 14, borderTopWidth: 2, borderBottomWidth: 2, borderColor: C.oro },
   flagSeg: { flex: 1 },
-  headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 14 },
-  headerLogo: { fontSize: 36, fontWeight: '900', color: C.crema, letterSpacing: -1 },
-  headerSub: { fontSize: 11, color: C.oro, letterSpacing: 4, marginTop: 1 },
+  headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8 },
+  headerLogo: { fontSize: 26, fontWeight: '900', color: C.crema, letterSpacing: -1 },
+  headerSub: { fontSize: 9, color: C.oro, letterSpacing: 4, marginTop: 1 },
   cartBadge: { position: 'relative', padding: 4 },
   cartDot: { position: 'absolute', top: 0, right: 0, backgroundColor: C.oro, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   cartDotText: { fontSize: 10, fontWeight: 'bold', color: C.marrone },
@@ -917,7 +1060,7 @@ const S = StyleSheet.create({
   offerBtn: { backgroundColor: C.crema, borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 14 },
   offerBtnText: { fontWeight: '800', color: C.marrone, fontSize: 13 },
   errore: { color: C.rosso, textAlign: 'center', marginBottom: 12, fontWeight: '700' },
-  navbar: { backgroundColor: C.marrone, flexDirection: 'row', paddingBottom: 24, paddingTop: 10, borderTopWidth: 3, borderTopColor: C.rosso },
+  navbar: { backgroundColor: C.marrone, flexDirection: 'row', paddingBottom: 12, paddingTop: 6, borderTopWidth: 3, borderTopColor: C.rosso },
   navBtn: { flex: 1, alignItems: 'center', gap: 2 },
   navLabel: { fontSize: 9, color: 'rgba(242,232,213,0.35)', letterSpacing: 0.5, fontWeight: '600' },
   navLabelOn: { color: C.oro },

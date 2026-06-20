@@ -184,6 +184,50 @@ const isPizzaCombo = (id) => id >= 1 && id <= 66;       // tutte le pizze
 const isDolceCombo = (id) => id >= 102 && id <= 113;    // dolci
 const isBibitaCombo = (id) => id >= 114 && id <= 122;   // bibite analcoliche (no birre/spritz)
 
+// --- AGGIUNTE / EXTRA ---
+// Categorie su cui si possono fare aggiunte
+const CATEGORIE_CON_AGGIUNTE = ['Pizze Rosse', 'Pizze Bianche', 'Pizze Speciali', 'Limited Edition', 'Focacce', 'Calzoni', 'Panuozzi', 'Hamburger', 'Farinata'];
+
+// Impasto integrale (solo pizze/focacce ecc., non farinata che non ha impasto a lievitazione classica - ma lo lasciamo su tutto per semplicità tranne farinata)
+const IMPASTO_INTEGRALE = { nome: 'Impasto integrale', prezzo: 1.00 };
+
+// Lista aggiunte ingredienti, raggruppate per prezzo
+const AGGIUNTE = [
+  // +1,00 €
+  { nome: 'Würstel', prezzo: 1.00 },
+  { nome: 'Salsiccia', prezzo: 1.00 },
+  { nome: 'Bacon', prezzo: 1.00 },
+  { nome: 'Pomodorini', prezzo: 1.00 },
+  { nome: 'Funghi', prezzo: 1.00 },
+  { nome: 'Olive', prezzo: 1.00 },
+  { nome: 'Prosciutto cotto', prezzo: 1.00 },
+  { nome: 'Carciofi', prezzo: 1.00 },
+  { nome: 'Peperoni', prezzo: 1.00 },
+  { nome: 'Salamino', prezzo: 1.00 },
+  { nome: 'Brie', prezzo: 1.00 },
+  { nome: 'Fontina', prezzo: 1.00 },
+  { nome: 'Gorgonzola', prezzo: 1.00 },
+  { nome: 'Cipolla', prezzo: 1.00 },
+  { nome: 'Certosino', prezzo: 1.00 },
+  { nome: 'Zucchine', prezzo: 1.00 },
+  { nome: 'Melanzane', prezzo: 1.00 },
+  { nome: 'Friarielli', prezzo: 1.00 },
+  { nome: 'Grana', prezzo: 1.00 },
+  { nome: 'Soppressata', prezzo: 1.00 },
+  { nome: 'Scamorza', prezzo: 1.00 },
+  { nome: 'Acciughe', prezzo: 1.00 },
+  { nome: 'Capperi', prezzo: 1.00 },
+  { nome: 'Rinforzo mozzarella', prezzo: 1.00 },
+  { nome: 'Rinforzo salsa di pomodoro', prezzo: 1.00 },
+  { nome: 'Patatine fritte', prezzo: 1.50 },
+  // +2,50 €
+  { nome: 'Bufala', prezzo: 2.50 },
+  { nome: 'Crudo', prezzo: 2.50 },
+  { nome: 'Speck', prezzo: 2.50 },
+  // +4,00 €
+  { nome: 'Burrata', prezzo: 4.00 },
+];
+
 // Stato ordine: etichetta e colore per il cliente
 const STATO_INFO = {
   nuovo: { label: 'In attesa di conferma', colore: '#8B7355', step: 0 },
@@ -349,7 +393,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, mancia, setMancia, manciaConfermata, setManciaConfermata, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
@@ -374,8 +418,8 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
 
   const spedizioneExtra = tipoOrdine === 'domicilio' ? 2.5 : 0;
 
-  const addQty = (id) => setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty + 1 } : c));
-  const removeQty = (id) => setCart(prev => prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
+  const addQty = (cartKey) => setCart(prev => prev.map(c => c.cartKey === cartKey ? { ...c, qty: c.qty + 1 } : c));
+  const removeQty = (cartKey) => setCart(prev => prev.map(c => c.cartKey === cartKey ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
 
   const doOrder = () => {
     if (combo) {
@@ -414,18 +458,22 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
         <>
           {/* Articoli carrello con +/- */}
           {cart.map(item => (
-            <View key={item.id} style={S.cartCard}>
+            <View key={item.cartKey} style={S.cartCard}>
               <Text style={{ fontSize: 24 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
               <View style={{ flex: 1 }}>
                 <Text style={S.cartName}>{item.name}</Text>
+                {item.integrale && <Text style={S.cartExtra}>+ Impasto integrale</Text>}
+                {item.aggiunte && item.aggiunte.length > 0 && (
+                  <Text style={S.cartExtra}>+ {item.aggiunte.map(a => a.nome).join(', ')}</Text>
+                )}
                 <Text style={S.cartPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
               </View>
               <View style={S.qtyCtrl}>
-                <TouchableOpacity style={S.qtyMinus} onPress={() => removeQty(item.id)}>
+                <TouchableOpacity style={S.qtyMinus} onPress={() => removeQty(item.cartKey)}>
                   <Text style={S.qtyMinusText}>−</Text>
                 </TouchableOpacity>
                 <Text style={S.qtyN}>{item.qty}</Text>
-                <TouchableOpacity style={S.qtyPlus} onPress={() => addQty(item.id)}>
+                <TouchableOpacity style={S.qtyPlus} onPress={() => addQty(item.cartKey)}>
                   <Text style={S.qtyPlusText}>+</Text>
                 </TouchableOpacity>
               </View>
@@ -571,6 +619,59 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
 
           {errore ? <Text style={S.errore}>{errore}</Text> : null}
 
+          {/* Mancia al locale */}
+          {(() => {
+            const totalePreMancia = cartTotal + spedizioneExtra;
+            const arrotonda = Math.max(0, Math.ceil(totalePreMancia) - totalePreMancia);
+            const arrotondaVal = Math.round(arrotonda * 100) / 100;
+            const opzioni = [
+              { label: '1 €', val: 1 },
+              { label: '2 €', val: 2 },
+              { label: '5 €', val: 5 },
+              { label: arrotondaVal > 0 ? `Arrotonda (+€ ${arrotondaVal.toFixed(2)})` : 'Arrotonda', val: arrotondaVal },
+            ];
+            return (
+              <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E8D5B0' }}>
+                <Text style={{ fontSize: 15, fontWeight: '800', color: C.marrone }}>💛 Offri una mancia</Text>
+                <Text style={{ fontSize: 12, color: C.grigio, marginTop: 2, marginBottom: 10 }}>Un piccolo gesto per il nostro staff. Del tutto facoltativo.</Text>
+                <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+                  {opzioni.map((o, i) => {
+                    const attiva = mancia === o.val && o.val > 0;
+                    return (
+                      <TouchableOpacity
+                        key={i}
+                        onPress={() => setMancia(attiva ? 0 : o.val)}
+                        style={{
+                          paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                          borderWidth: 2, borderColor: attiva ? C.oro : '#E8D5B0',
+                          backgroundColor: attiva ? '#FFF3D6' : 'white',
+                        }}
+                      >
+                        <Text style={{ fontSize: 13, fontWeight: '700', color: attiva ? '#8B6914' : C.grigio }}>{o.label}</Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                {mancia > 0 && (
+                  <TouchableOpacity
+                    onPress={() => setManciaConfermata(!manciaConfermata)}
+                    style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 8 }}
+                  >
+                    <View style={{
+                      width: 22, height: 22, borderRadius: 6, borderWidth: 2,
+                      borderColor: manciaConfermata ? '#2C5A2E' : '#C0AE90',
+                      backgroundColor: manciaConfermata ? '#2C5A2E' : 'white',
+                      alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      {manciaConfermata && <Text style={{ color: 'white', fontSize: 14, fontWeight: '900' }}>✓</Text>}
+                    </View>
+                    <Text style={{ fontSize: 13, color: C.marrone, fontWeight: '600' }}>Confermo la mancia di € {mancia.toFixed(2)}</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+            );
+          })()}
+
           <View style={S.totalCard}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
               <Text style={S.totalRow}>Subtotale</Text>
@@ -594,9 +695,15 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
                 <Text style={S.totalRow}>€ 2.50</Text>
               </View>
             )}
+            {manciaConfermata && mancia > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 }}>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>💛 Mancia</Text>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>+ € {mancia.toFixed(2)}</Text>
+              </View>
+            )}
             <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
               <Text style={S.totalBig}>Totale</Text>
-              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + spedizioneExtra).toFixed(2)}</Text>
+              <Text style={[S.totalBig, { color: C.rosso }]}>€ {(cartTotal + spedizioneExtra + (manciaConfermata ? mancia : 0)).toFixed(2)}</Text>
             </View>
           </View>
 
@@ -714,6 +821,99 @@ function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
   );
 }
 
+// Pannello scelta aggiunte: si apre quando si tocca un prodotto con aggiunte disponibili
+function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
+  const [sel, setSel] = useState([]);
+  const [integrale, setIntegrale] = useState(false);
+
+  if (!prodotto) return null;
+
+  const toggle = (agg) => {
+    setSel(prev => prev.find(a => a.nome === agg.nome)
+      ? prev.filter(a => a.nome !== agg.nome)
+      : [...prev, agg]);
+  };
+
+  const costoExtra = sel.reduce((s, a) => s + a.prezzo, 0) + (integrale ? IMPASTO_INTEGRALE.prezzo : 0);
+  const totale = prodotto.price + costoExtra;
+  const farinata = prodotto.id >= 114 && prodotto.id <= 126; // farinata: niente impasto integrale
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998,
+      display: 'flex', alignItems: 'flex-end', justifyContent: 'center',
+    }}
+      onClick={onChiudi}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#FBF6EC', width: '100%', maxWidth: 520, maxHeight: '85vh',
+          borderTopLeftRadius: 22, borderTopRightRadius: 22, display: 'flex', flexDirection: 'column',
+          boxShadow: '0 -8px 30px rgba(0,0,0,0.3)',
+        }}
+      >
+        {/* header */}
+        <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid rgba(0,0,0,0.08)' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+            <div>
+              <div style={{ fontSize: 19, fontWeight: 900, color: '#5A2D0C' }}>{prodotto.name}</div>
+              {prodotto.desc ? <div style={{ fontSize: 12, color: '#8B7355', marginTop: 2 }}>{prodotto.desc}</div> : null}
+            </div>
+            <div onClick={onChiudi} style={{ fontSize: 22, color: '#8B7355', cursor: 'pointer', padding: 4, lineHeight: 1 }}>✕</div>
+          </div>
+          <div style={{ fontSize: 13, color: '#8B7355', marginTop: 8 }}>Personalizza con impasto e aggiunte (facoltativo)</div>
+        </div>
+
+        {/* corpo scrollabile */}
+        <div style={{ overflowY: 'auto', padding: '14px 20px', flex: 1 }}>
+          {!farinata && (
+            <div style={{ marginBottom: 16 }}>
+              <div style={{ fontSize: 12, fontWeight: 800, color: '#8B7355', textTransform: 'uppercase', marginBottom: 8 }}>Impasto</div>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: integrale ? '#FFF3D6' : 'white', border: `2px solid ${integrale ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" checked={integrale} onChange={() => setIntegrale(v => !v)} style={{ width: 18, height: 18, accentColor: '#C8961E' }} />
+                  <span style={{ fontSize: 14, color: '#5A2D0C', fontWeight: 600 }}>Impasto integrale</span>
+                </span>
+                <span style={{ fontSize: 14, color: '#8B1A1A', fontWeight: 700 }}>+€ 1,00</span>
+              </label>
+            </div>
+          )}
+
+          <div style={{ fontSize: 12, fontWeight: 800, color: '#8B7355', textTransform: 'uppercase', marginBottom: 8 }}>Aggiunte</div>
+          {AGGIUNTE.map(agg => {
+            const attiva = !!sel.find(a => a.nome === agg.nome);
+            return (
+              <label key={agg.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', marginBottom: 7, background: attiva ? '#FFF3D6' : 'white', border: `2px solid ${attiva ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <input type="checkbox" checked={attiva} onChange={() => toggle(agg)} style={{ width: 18, height: 18, accentColor: '#C8961E' }} />
+                  <span style={{ fontSize: 14, color: '#5A2D0C', fontWeight: 600 }}>{agg.nome}</span>
+                </span>
+                <span style={{ fontSize: 14, color: '#8B1A1A', fontWeight: 700 }}>+€ {agg.prezzo.toFixed(2).replace('.', ',')}</span>
+              </label>
+            );
+          })}
+        </div>
+
+        {/* footer fisso */}
+        <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(0,0,0,0.08)', background: '#FBF6EC' }}>
+          <button
+            onClick={() => onConferma(prodotto, sel, integrale)}
+            style={{
+              width: '100%', background: '#8B1A1A', color: 'white', border: 'none', borderRadius: 14,
+              padding: '15px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit',
+              display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 20, paddingRight: 20,
+            }}
+          >
+            <span>Aggiungi al carrello</span>
+            <span>€ {totale.toFixed(2)}</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [utente, setUtenteRaw] = useState(() => {
     try {
@@ -736,6 +936,9 @@ export default function App() {
   const [combo, setCombo] = useState(null); // combo in corso di composizione: null o { pizze:4, dolci:4, bibite:4 }
   const [combosConfermate, setCombosConfermate] = useState(0); // quante combo già confermate (4 bibite gratis ciascuna)
   const [bibitaOmaggioId, setBibitaOmaggioId] = useState(null); // bibita scelta come omaggio premio ruota
+  const [prodottoAggiunte, setProdottoAggiunte] = useState(null); // prodotto di cui scegliere le aggiunte (apre overlay)
+  const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
+  const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
   const [ruotaGirando, setRuotaGirando] = useState(false);
   const [ruotaPremio, setRuotaPremio] = useState(null);
@@ -788,9 +991,33 @@ export default function App() {
       if (isBibitaCombo(item.id) && tot(isBibitaCombo) >= base + combo.bibite) { alert('Hai già 4 bibite in questa combo. Conferma la combo per aggiungere altro.'); return; }
     }
     setCart(prev => {
-      const ex = prev.find(c => c.id === item.id);
-      if (ex) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
-      return [...prev, { ...item, qty: 1 }];
+      // item liscio: cartKey = id semplice
+      const key = String(item.id);
+      const ex = prev.find(c => c.cartKey === key);
+      if (ex) return prev.map(c => c.cartKey === key ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { ...item, cartKey: key, qty: 1, aggiunte: [], integrale: false, prezzoBase: item.price }];
+    });
+  };
+
+  // Aggiunge un prodotto con aggiunte/integrale scelte (dal pannello aggiunte)
+  const aggiungiConAggiunte = (item, aggiunteSel, integrale) => {
+    const costoAggiunte = aggiunteSel.reduce((s, a) => s + a.prezzo, 0) + (integrale ? IMPASTO_INTEGRALE.prezzo : 0);
+    const prezzoFinale = item.price + costoAggiunte;
+    // chiave univoca: id + nomi aggiunte ordinati + integrale
+    const firma = [...aggiunteSel.map(a => a.nome).sort(), integrale ? 'INT' : ''].join('|');
+    const key = item.id + '::' + firma;
+    setCart(prev => {
+      const ex = prev.find(c => c.cartKey === key);
+      if (ex) return prev.map(c => c.cartKey === key ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, {
+        ...item,
+        cartKey: key,
+        qty: 1,
+        price: prezzoFinale,
+        prezzoBase: item.price,
+        aggiunte: aggiunteSel,
+        integrale,
+      }];
     });
   };
 
@@ -800,8 +1027,8 @@ export default function App() {
     setCombo(null);
   };
 
-  const remove = (id) => setCart(prev =>
-    prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0)
+  const remove = (cartKey) => setCart(prev =>
+    prev.map(c => c.cartKey === cartKey ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0)
   );
 
   const cartN = cart.reduce((s, i) => s + i.qty, 0);
@@ -848,6 +1075,8 @@ export default function App() {
     if (scontoPremio > 0 && utente.premio === 'sconto10') righeRiepilogo.push(`Sconto 10% (premio ruota): -€ ${scontoPremio.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'bibita') righeRiepilogo.push(`Bibita OMAGGIO (premio ruota): ${nomeBibitaOmaggio} -€ ${scontoPremio.toFixed(2)}`);
     if (spedizione > 0) righeRiepilogo.push(`Consegna a domicilio: +€ ${spedizione.toFixed(2)}`);
+    const manciaEffettiva = manciaConfermata && mancia > 0 ? mancia : 0;
+    if (manciaEffettiva > 0) righeRiepilogo.push(`Mancia al locale: +€ ${manciaEffettiva.toFixed(2)}`);
     if (combosConfermate > 0) righeRiepilogo.push(`${combosConfermate}x COMBO FAMIGLIA (4 pizze + 4 dolci + 4 bibite omaggio ciascuna)`);
     const noteCliente = (note || '').trim();
     const noteComplete = [
@@ -859,8 +1088,14 @@ export default function App() {
     const { error } = await supabase.from('ordini').insert([{
       cliente: utente.nome,
       telefono: utente.telefono,
-      items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
-      totale: cartTotal + spedizione,
+      items: JSON.stringify(cart.map(i => ({
+        name: i.name,
+        qty: i.qty,
+        price: i.price,
+        aggiunte: (i.aggiunte || []).map(a => a.nome),
+        integrale: !!i.integrale,
+      }))),
+      totale: cartTotal + spedizione + manciaEffettiva,
       stato: 'nuovo',
       note: noteComplete,
       indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
@@ -882,10 +1117,12 @@ export default function App() {
       await supabase.from('clienti').update({ premio_attivo: '' }).eq('telefono', utente.telefono);
       setUtente({ ...utente, premio: '', indirizzo: indirizzo || utente.indirizzo });
     }
-    const totaleOrdine = cartTotal + spedizione;
+    const totaleOrdine = cartTotal + spedizione + manciaEffettiva;
     setCombo(null);
     setCombosConfermate(0);
     setBibitaOmaggioId(null);
+    setMancia(0);
+    setManciaConfermata(false);
     setOrdered(true);
     // Ruota: ordine >=15€ e nessun premio era già in sospeso, e non ne ha appena vinto uno
     if (totaleOrdine >= 15 && !premioInSospeso) {
@@ -1049,11 +1286,15 @@ export default function App() {
       {cat === 'Pane del Forno' && (
         <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12, marginTop: 8 }}>
           <Text style={{ fontSize: 13, color: '#8B6914', fontWeight: '700' }}>Pane fresco dal forno a legna</Text>
-          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina. Ritiro in pizzeria o consegna a domicilio (+€2.50). Solo preordine per il giorno successivo.</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 2 }}>Disponibile ogni mattina, solo su preordine per il giorno successivo. Il ritiro in pizzeria comprende solo il costo del pane. La consegna a domicilio ha un costo aggiuntivo di €2.50.</Text>
         </View>
       )}
       {MENU[cat].map(item => {
-        const qty = cart.find(c => c.id === item.id)?.qty || 0;
+        const conAggiunte = CATEGORIE_CON_AGGIUNTE.includes(cat) && !combo;
+        // quantità: per categorie con aggiunte somma tutte le righe con stesso id
+        const qty = conAggiunte
+          ? cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0)
+          : (cart.find(c => c.cartKey === String(item.id))?.qty || 0);
         return (
           <View key={item.id} style={S.card}>
             <View style={[S.cardLeft, item.limitato && { backgroundColor: '#FFF8E7' }]}>
@@ -1065,13 +1306,20 @@ export default function App() {
               {item.desc ? <Text style={S.cardDesc}>{item.desc}</Text> : null}
               <View style={S.cardFooter}>
                 <Text style={S.cardPrice}>€ {item.price.toFixed(2)}</Text>
-                {qty === 0 ? (
+                {conAggiunte ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    {qty > 0 && <Text style={{ fontSize: 12, color: C.grigio, fontWeight: '700' }}>{qty} nel carrello</Text>}
+                    <TouchableOpacity style={S.addBtn} onPress={() => setProdottoAggiunte(item)}>
+                      <Text style={S.addBtnText}>+ Aggiungi</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : qty === 0 ? (
                   <TouchableOpacity style={S.addBtn} onPress={() => add(item)}>
                     <Text style={S.addBtnText}>+ Aggiungi</Text>
                   </TouchableOpacity>
                 ) : (
                   <View style={S.qtyCtrl}>
-                    <TouchableOpacity style={S.qtyMinus} onPress={() => remove(item.id)}>
+                    <TouchableOpacity style={S.qtyMinus} onPress={() => remove(String(item.id))}>
                       <Text style={S.qtyMinusText}>-</Text>
                     </TouchableOpacity>
                     <Text style={S.qtyN}>{qty}</Text>
@@ -1228,12 +1476,27 @@ export default function App() {
       let items = [];
       try { items = JSON.parse(ordine.items); } catch {}
       if (!items.length) { alert('Impossibile riordinare questo ordine.'); return; }
-      // Ricostruisce il carrello cercando i prodotti nel MENU per id/nome
+      // Ricostruisce il carrello cercando i prodotti nel MENU per nome, riapplicando aggiunte/integrale
       const nuovoCarrello = [];
       const tuttiProdotti = Object.values(MENU).flat();
       for (const it of items) {
         const trovato = tuttiProdotti.find(p => p.name === it.name);
-        if (trovato) nuovoCarrello.push({ ...trovato, qty: it.qty || 1 });
+        if (!trovato) continue;
+        const nomiAgg = it.aggiunte || [];
+        const aggOggetti = nomiAgg.map(n => AGGIUNTE.find(a => a.nome === n)).filter(Boolean);
+        const integrale = !!it.integrale;
+        const costoExtra = aggOggetti.reduce((s, a) => s + a.prezzo, 0) + (integrale ? IMPASTO_INTEGRALE.prezzo : 0);
+        const firma = [...aggOggetti.map(a => a.nome).sort(), integrale ? 'INT' : ''].join('|');
+        const key = (aggOggetti.length || integrale) ? trovato.id + '::' + firma : String(trovato.id);
+        nuovoCarrello.push({
+          ...trovato,
+          cartKey: key,
+          qty: it.qty || 1,
+          price: trovato.price + costoExtra,
+          prezzoBase: trovato.price,
+          aggiunte: aggOggetti,
+          integrale,
+        });
       }
       if (!nuovoCarrello.length) { alert('I prodotti di questo ordine non sono più disponibili.'); return; }
       setCombo(null);
@@ -1322,12 +1585,13 @@ export default function App() {
     );
   };
 
-  // RUOTA DELLA FORTUNA
+  // Home e Menu non usano hook interni: le chiamo come funzioni per evitare il
+  // rimontaggio che resettava lo scroll. Profilo/Ordini usano hook -> restano componenti.
   const screens = {
-    home: <Home />,
-    menu: <Menu />,
-    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
-    offers: <Offers />,
+    home: Home(),
+    menu: Menu(),
+    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
+    offers: Offers(),
     profilo: <Profilo />,
     ordini: <Ordini />,
   };
@@ -1342,6 +1606,13 @@ export default function App() {
           rotazione={ruotaRotazione}
           onGira={giraRuota}
           onChiudi={chiudiRuota}
+        />
+      )}
+      {prodottoAggiunte && (
+        <PannelloAggiunte
+          prodotto={prodottoAggiunte}
+          onConferma={(prod, agg, integrale) => { aggiungiConAggiunte(prod, agg, integrale); setProdottoAggiunte(null); }}
+          onChiudi={() => setProdottoAggiunte(null)}
         />
       )}
       <View style={S.header}>
@@ -1476,6 +1747,7 @@ const S = StyleSheet.create({
   emptyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
   cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12 },
   cartName: { fontSize: 14, fontWeight: '700', color: C.marrone },
+  cartExtra: { fontSize: 11, color: C.grigio, marginTop: 1 },
   cartPrice: { fontSize: 13, color: C.rosso, marginTop: 2 },
   totalCard: { backgroundColor: 'white', borderRadius: 16, padding: 18, marginBottom: 14 },
   totalRow: { fontSize: 13, color: C.grigio },

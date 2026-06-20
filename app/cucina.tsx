@@ -61,6 +61,25 @@ export default function Cucina() {
     setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, stato: cfg.next } : o));
   };
 
+  const cambiaOrario = async (ordine) => {
+    const attuale = ordine.orario_consegna || '';
+    const nuovo = window.prompt('Nuovo orario di consegna/ritiro per questo ordine:', attuale);
+    if (nuovo === null) return; // annullato
+    const val = nuovo.trim();
+    if (!val) return;
+    setLoading(true);
+    const { error } = await supabase
+      .from('ordini')
+      .update({ orario_consegna: val })
+      .eq('id', ordine.id);
+    setLoading(false);
+    if (error) {
+      setErrMsg('Errore aggiornamento orario: ' + error.message);
+      return;
+    }
+    setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, orario_consegna: val } : o));
+  };
+
   const visibili = filtro === 'attivi'
     ? ordini.filter(o => o.stato !== 'consegnato')
     : ordini;
@@ -162,7 +181,12 @@ export default function Cucina() {
                     <Text style={S.infoVal}>
                       {isAsporto ? '🏪 Ritiro in pizzeria' : '🛵 ' + ordine.indirizzo}
                     </Text>
-                    <Text style={S.infoVal}>🕐 {orarioLabel}</Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 2 }}>
+                      <Text style={S.infoVal}>🕐 {orarioLabel}</Text>
+                      <TouchableOpacity onPress={() => cambiaOrario(ordine)} style={{ backgroundColor: 'rgba(200,150,30,0.2)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 }}>
+                        <Text style={{ color: C.oro, fontSize: 12, fontWeight: '800' }}>✏️ Modifica orario</Text>
+                      </TouchableOpacity>
+                    </View>
                   </View>
 
                   {/* Pagamento */}
@@ -179,7 +203,13 @@ export default function Cucina() {
                     {items.map((item, i) => (
                       <View key={i} style={S.itemRow}>
                         <Text style={S.itemQty}>×{item.qty}</Text>
-                        <Text style={S.itemName}>{item.name}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={S.itemName}>{item.name}</Text>
+                          {item.integrale ? <Text style={S.itemExtra}>+ Impasto integrale</Text> : null}
+                          {item.aggiunte && item.aggiunte.length > 0 ? (
+                            <Text style={S.itemExtra}>+ {item.aggiunte.join(', ')}</Text>
+                          ) : null}
+                        </View>
                         <Text style={S.itemPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
                       </View>
                     ))}
@@ -273,6 +303,7 @@ const S = StyleSheet.create({
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 8 },
   itemQty: { fontSize: 14, fontWeight: '800', color: C.oro, minWidth: 28 },
   itemName: { flex: 1, fontSize: 13, color: C.crema },
+  itemExtra: { fontSize: 11, color: C.oro, marginTop: 1, fontStyle: 'italic' },
   itemPrice: { fontSize: 13, color: C.grigio },
   totaleRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
   totaleLbl: { fontSize: 11, fontWeight: '800', color: C.grigio, letterSpacing: 1 },

@@ -8,9 +8,12 @@ const supabase = createClient(
 );
 
 const C = {
-  rosso: '#8B1A1A', crema: '#F2E8D5', cremaScuro: '#E8D5B0',
-  oro: '#C8961E', marrone: '#3D1A00', grigio: '#8B7355',
+  rosso: '#8B1A1A', rossoScuro: '#5C0F0F', crema: '#F2E8D5', cremaScuro: '#E8D5B0',
+  oro: '#C8961E', oroChiaro: '#E8B84B', marrone: '#3D1A00', grigio: '#8B7355', verde: '#2C5A2E',
 };
+// Font: Fraunces per i titoli (carattere caldo da trattoria), Inter per il testo.
+const FONT_TITOLO = "'Fraunces', Georgia, serif";
+const FONT_TESTO = "'Inter', -apple-system, sans-serif";
 
 const MENU = {
   'Pizze Rosse': [
@@ -67,6 +70,7 @@ const MENU = {
     { id: 45, name: 'A Pork', desc: 'Mozzarella, Cipolla, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
     { id: 46, name: 'Primavera', desc: 'Mozzarella, Zucchine, Melanzane, Peperoni, Tonno, Grana', price: 12.00 },
     { id: 47, name: 'Supernova', desc: 'Pomodoro, Soppressata, Salsiccia, Nduja, Burrata', price: 12.00 },
+    { id: 48, name: 'La Antò', desc: 'Bianca, Crocchette di patate, Scamorza, Salsiccia, Grana, Basilico, Pepe', price: 11.00 },
   ],
   'Focacce': [
     { id: 48, name: 'Balsamica', desc: 'Certosino, Rucola, Pomodorini, Grana, Speck, Glassa balsamica', price: 10.50 },
@@ -228,6 +232,33 @@ const AGGIUNTE = [
   { nome: 'Burrata', prezzo: 4.00 },
 ];
 
+// --- ORARI DI APERTURA ---
+// Pranzo e cena, tutti i giorni. Per cambiarli in futuro modifica solo qui.
+const ORARI_APERTURA = {
+  pranzo: { apre: '12:00', chiude: '14:30' },
+  cena: { apre: '18:15', chiude: '22:45' },
+};
+
+// Converte "HH:MM" in minuti dall'inizio della giornata
+const aMinuti = (hhmm) => {
+  const [h, m] = hhmm.split(':').map(Number);
+  return h * 60 + m;
+};
+
+// Restituisce { aperto, prossimaApertura } in base all'ora attuale
+const statoApertura = (adesso = new Date()) => {
+  const oraMin = adesso.getHours() * 60 + adesso.getMinutes();
+  const inPranzo = oraMin >= aMinuti(ORARI_APERTURA.pranzo.apre) && oraMin < aMinuti(ORARI_APERTURA.pranzo.chiude);
+  const inCena = oraMin >= aMinuti(ORARI_APERTURA.cena.apre) && oraMin < aMinuti(ORARI_APERTURA.cena.chiude);
+  if (inPranzo || inCena) return { aperto: true, prossimaApertura: null };
+  // chiuso: calcola la prossima fascia
+  let prossima;
+  if (oraMin < aMinuti(ORARI_APERTURA.pranzo.apre)) prossima = ORARI_APERTURA.pranzo.apre;
+  else if (oraMin < aMinuti(ORARI_APERTURA.cena.apre)) prossima = ORARI_APERTURA.cena.apre;
+  else prossima = ORARI_APERTURA.pranzo.apre; // dopo cena: riapre domani a pranzo
+  return { aperto: false, prossimaApertura: prossima };
+};
+
 // Stato ordine: etichetta e colore per il cliente
 const STATO_INFO = {
   nuovo: { label: 'In attesa di conferma', colore: '#8B7355', step: 0 },
@@ -240,7 +271,7 @@ const STATO_STEPS = ['nuovo', 'in_lavorazione', 'pronto', 'consegnato'];
 
 const ORARI_SERA_FULL = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
 const ORARI_PRANZO_FULL = ['12:30', '13:00', '13:30', '14:00'];
-const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
+const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:15-22:45)'];
 
 // Restituisce gli orari disponibili per "oggi" in base all'ora corrente
 // Per i giorni futuri restituisce sempre tutti gli orari
@@ -250,7 +281,7 @@ const getOrariDisponibili = (isOggi: boolean) => {
   const minuti = new Date().getMinutes();
   const oraDecimale = ora + minuti / 60;
   // Pranzo disponibile: tra 12:00 e 14:30 (apertura 12:00, primo slot 30min dopo = 12:30)
-  // Sera disponibile: tra 18:00 e 22:45 (apertura 18:00, primo slot 30min dopo = 18:30)
+  // Sera disponibile: tra 18:15 e 22:45 (apertura 18:15, primo slot prenotabile 18:30)
   if (oraDecimale < 14.5) {
     // Siamo ancora nel pranzo o prima: mostra pranzo filtrato + sera
     const pranziFiltrati = ORARI_PRANZO_FULL.filter(o => {
@@ -338,9 +369,16 @@ function LoginScreen({ onLogin }) {
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.rosso} />
-      <View style={S.loginHeader}>
-        <Text style={S.loginLogo}>Pizzicata</Text>
-        <Text style={S.loginSub}>- TORINO -</Text>
+      <View style={[S.loginHeader, { background: 'radial-gradient(circle at 80% -10%, rgba(232,184,75,0.4), transparent 55%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
+        <svg width="120" height="120" viewBox="0 0 200 200" fill="none" style={{ position: 'absolute', right: -20, bottom: -30, opacity: 0.55 }}>
+          <path d="M100 10 L190 170 Q100 200 10 170 Z" fill="#E8B84B"/>
+          <path d="M100 30 L175 165 Q100 190 25 165 Z" fill="#C0392B" opacity="0.85"/>
+          <circle cx="80" cy="120" r="11" fill="#F2E8D5"/>
+          <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
+          <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
+        </svg>
+        <Text style={S.loginLogo}>Pizzicata<Text style={{ color: C.oroChiaro }}>.</Text></Text>
+        <Text style={S.loginSub}>— TORINO —</Text>
       </View>
       <ScrollView style={S.loginBody} contentContainerStyle={S.loginBodyContent} showsVerticalScrollIndicator={false}>
         <Text style={S.loginEmoji}>🍕</Text>
@@ -393,7 +431,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, mancia, setMancia, manciaConfermata, setManciaConfermata, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
@@ -410,6 +448,8 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const [orario, setOrario] = useState(() => getOrariDisponibili(true)[0] || '18:30');
   const [oraCustom, setOraCustom] = useState('19');
   const [minCustom, setMinCustom] = useState('00');
+  const [manciaCustomAttiva, setManciaCustomAttiva] = useState(false);
+  const [manciaCustomVal, setManciaCustomVal] = useState('');
 
   useEffect(() => {
     const nuovi = getOrariDisponibili(giornoSelezionato === 0 && !haPane);
@@ -426,9 +466,36 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
       setErrore('Hai una Combo Famiglia non confermata. Completala e premi "Conferma combo", oppure annullala dal menù.');
       return;
     }
+    // Blocco ordini a locale chiuso, ma solo per ordini di oggi (i preordini per giorni futuri restano permessi)
+    if (apertura && !apertura.aperto && isOggi) {
+      setErrore(`Siamo chiusi in questo momento${apertura.prossimaApertura ? `, riapriamo alle ${apertura.prossimaApertura}` : ''}. Puoi comunque preordinare scegliendo un giorno successivo.`);
+      return;
+    }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
-    setErrore('');
     const orarioFinale = orario === 'custom' ? `${oraCustom}:${minCustom}` : orario;
+    // Se l'ordine è per oggi e si è scelto un orario specifico (non "Appena possibile"),
+    // verifica che non sia un orario già passato o troppo a ridosso (serve un minimo di preparazione).
+    if (isOggi && orarioFinale !== 'Appena possibile') {
+      const match = orarioFinale.match(/^(\d{1,2}):(\d{2})$/);
+      if (match) {
+        const minutiScelti = Number(match[1]) * 60 + Number(match[2]);
+        const adesso = new Date();
+        const minutiOra = adesso.getHours() * 60 + adesso.getMinutes();
+        const MARGINE = 20; // minuti minimi per preparare
+        if (minutiScelti < minutiOra + MARGINE) {
+          setErrore(`L'orario scelto è già passato o troppo vicino. Scegli un orario almeno ${MARGINE} minuti più avanti, oppure "Appena possibile".`);
+          return;
+        }
+        // verifica anche che rientri in una fascia di apertura
+        const dentroPranzo = minutiScelti >= aMinuti(ORARI_APERTURA.pranzo.apre) && minutiScelti <= aMinuti(ORARI_APERTURA.pranzo.chiude);
+        const dentroCena = minutiScelti >= aMinuti(ORARI_APERTURA.cena.apre) && minutiScelti <= aMinuti(ORARI_APERTURA.cena.chiude);
+        if (!dentroPranzo && !dentroCena) {
+          setErrore('L\'orario scelto è fuori dagli orari di apertura (12:00-14:30 / 18:15-22:45).');
+          return;
+        }
+      }
+    }
+    setErrore('');
     handleOrder({ indirizzo, note, tipoOrdine, orario: orarioFinale, pagamento, giorno: calendario[giornoSelezionato].full });
   };
 
@@ -592,26 +659,46 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
           </View>
 
           {/* Bibita omaggio premio ruota */}
-          {utente.premio === 'bibita' && (
+          {(utente.premio === 'bibita' || utente.premio === 'bibita2') && (
             <View style={{ backgroundColor: '#FFF8E8', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 2, borderColor: C.oro }}>
-              <Text style={{ fontSize: 15, fontWeight: '800', color: C.marrone, marginBottom: 4 }}>🥤 Hai una bibita in omaggio!</Text>
-              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 10 }}>Premio della ruota. Scegli quale bibita vuoi gratis (le altre le paghi normalmente).</Text>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: C.marrone, marginBottom: 4 }}>
+                {utente.premio === 'bibita2' ? '🥤 Hai 2 bibite in omaggio!' : '🥤 Hai una bibita in omaggio!'}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 10 }}>
+                {utente.premio === 'bibita2'
+                  ? 'Premio della ruota potenziata. Scegli 2 bibite gratis (le altre le paghi normalmente).'
+                  : 'Premio della ruota. Scegli quale bibita vuoi gratis (le altre le paghi normalmente).'}
+              </Text>
               {(() => {
                 const bibiteCarrello = cart.filter(c => isBibitaCombo(c.id));
                 if (bibiteCarrello.length === 0) {
                   return <Text style={{ fontSize: 13, color: C.rosso }}>Aggiungi una bibita dal menù per usare l'omaggio.</Text>;
                 }
                 return (
-                  <select
-                    value={bibitaOmaggioId || ''}
-                    onChange={(e) => setBibitaOmaggioId(e.target.value ? Number(e.target.value) : null)}
-                    style={{ ...inputStyle, height: 44 }}
-                  >
-                    <option value="">— Scegli la bibita omaggio —</option>
-                    {bibiteCarrello.map(b => (
-                      <option key={b.id} value={b.id}>{b.name} (€ {b.price.toFixed(2)})</option>
-                    ))}
-                  </select>
+                  <>
+                    <select
+                      value={bibitaOmaggioId || ''}
+                      onChange={(e) => setBibitaOmaggioId(e.target.value ? Number(e.target.value) : null)}
+                      style={{ ...inputStyle, height: 44 }}
+                    >
+                      <option value="">— Scegli la {utente.premio === 'bibita2' ? '1ª ' : ''}bibita omaggio —</option>
+                      {bibiteCarrello.map(b => (
+                        <option key={b.id} value={b.id}>{b.name} (€ {b.price.toFixed(2)})</option>
+                      ))}
+                    </select>
+                    {utente.premio === 'bibita2' && (
+                      <select
+                        value={bibitaOmaggioId2 || ''}
+                        onChange={(e) => setBibitaOmaggioId2(e.target.value ? Number(e.target.value) : null)}
+                        style={{ ...inputStyle, height: 44, marginTop: 8 }}
+                      >
+                        <option value="">— Scegli la 2ª bibita omaggio —</option>
+                        {bibiteCarrello.map(b => (
+                          <option key={b.id} value={b.id}>{b.name} (€ {b.price.toFixed(2)})</option>
+                        ))}
+                      </select>
+                    )}
+                  </>
                 );
               })()}
             </View>
@@ -631,27 +718,60 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
               { label: arrotondaVal > 0 ? `Arrotonda (+€ ${arrotondaVal.toFixed(2)})` : 'Arrotonda', val: arrotondaVal },
             ];
             return (
-              <View style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E8D5B0' }}>
+              <View style={{ backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E8D5B0' }}>
                 <Text style={{ fontSize: 15, fontWeight: '800', color: C.marrone }}>💛 Offri una mancia</Text>
                 <Text style={{ fontSize: 12, color: C.grigio, marginTop: 2, marginBottom: 10 }}>Un piccolo gesto per il nostro staff. Del tutto facoltativo.</Text>
                 <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                   {opzioni.map((o, i) => {
-                    const attiva = mancia === o.val && o.val > 0;
+                    const attiva = mancia === o.val && o.val > 0 && !manciaCustomAttiva;
                     return (
                       <TouchableOpacity
                         key={i}
-                        onPress={() => setMancia(attiva ? 0 : o.val)}
+                        onPress={() => { setManciaCustomAttiva(false); setManciaCustomVal(''); setMancia(attiva ? 0 : o.val); }}
                         style={{
                           paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
                           borderWidth: 2, borderColor: attiva ? C.oro : '#E8D5B0',
-                          backgroundColor: attiva ? '#FFF3D6' : 'white',
+                          backgroundColor: attiva ? '#FFF3D6' : '#FBF4E6',
                         }}
                       >
                         <Text style={{ fontSize: 13, fontWeight: '700', color: attiva ? '#8B6914' : C.grigio }}>{o.label}</Text>
                       </TouchableOpacity>
                     );
                   })}
+                  <TouchableOpacity
+                    onPress={() => {
+                      if (manciaCustomAttiva) { setManciaCustomAttiva(false); setManciaCustomVal(''); setMancia(0); }
+                      else { setManciaCustomAttiva(true); setMancia(0); }
+                    }}
+                    style={{
+                      paddingVertical: 10, paddingHorizontal: 14, borderRadius: 10,
+                      borderWidth: 2, borderColor: manciaCustomAttiva ? C.oro : '#E8D5B0',
+                      backgroundColor: manciaCustomAttiva ? '#FFF3D6' : '#FBF4E6',
+                    }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '700', color: manciaCustomAttiva ? '#8B6914' : C.grigio }}>✏️ Personalizzata</Text>
+                  </TouchableOpacity>
                 </View>
+                {manciaCustomAttiva && (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 10 }}>
+                    <Text style={{ fontSize: 16, fontWeight: '800', color: C.marrone }}>€</Text>
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.50"
+                      inputMode="decimal"
+                      placeholder="Importo a tua scelta"
+                      value={manciaCustomVal}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setManciaCustomVal(v);
+                        const n = parseFloat(v);
+                        setMancia(!isNaN(n) && n > 0 ? Math.round(n * 100) / 100 : 0);
+                      }}
+                      style={{ ...inputStyle, flex: 1, height: 44 }}
+                    />
+                  </View>
+                )}
                 {mancia > 0 && (
                   <TouchableOpacity
                     onPress={() => setManciaConfermata(!manciaConfermata)}
@@ -660,7 +780,7 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
                     <View style={{
                       width: 22, height: 22, borderRadius: 6, borderWidth: 2,
                       borderColor: manciaConfermata ? '#2C5A2E' : '#C0AE90',
-                      backgroundColor: manciaConfermata ? '#2C5A2E' : 'white',
+                      backgroundColor: manciaConfermata ? '#2C5A2E' : '#FFFCF6',
                       alignItems: 'center', justifyContent: 'center',
                     }}>
                       {manciaConfermata && <Text style={{ color: 'white', fontSize: 14, fontWeight: '900' }}>✓</Text>}
@@ -707,8 +827,13 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
             </View>
           </View>
 
-          <TouchableOpacity style={S.checkoutBtn} onPress={doOrder}>
-            <Text style={S.checkoutText}>Conferma Ordine</Text>
+          <TouchableOpacity
+            style={[S.checkoutBtn, (apertura && !apertura.aperto && isOggi) && { backgroundColor: '#B0A38C' }]}
+            onPress={doOrder}
+          >
+            <Text style={S.checkoutText}>
+              {(apertura && !apertura.aperto && isOggi) ? '🔒 Chiuso — preordina per domani' : 'Conferma Ordine'}
+            </Text>
           </TouchableOpacity>
         </>
       )}
@@ -719,31 +844,45 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
 const inputStyle = {
   border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
   fontSize: 14, color: '#3D1A00', width: '100%', outline: 'none',
-  fontFamily: 'inherit', backgroundColor: 'white', boxSizing: 'border-box',
+  fontFamily: 'inherit', backgroundColor: '#FFFCF6', boxSizing: 'border-box',
 };
 
 const textareaStyle = {
   border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
   fontSize: 14, color: '#3D1A00', width: '100%', minHeight: 80,
   outline: 'none', fontFamily: 'inherit', resize: 'none',
-  backgroundColor: 'white', boxSizing: 'border-box',
+  backgroundColor: '#FFFCF6', boxSizing: 'border-box',
 };
 
 // RUOTA DELLA FORTUNA (componente esterno e stabile)
-function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
+function RuotaFortuna({ girando, premio, rotazione, potenziata, onGira, onChiudi }) {
   const N = 6;
   const gradiPerSpicchio = 360 / N;
+  // Etichette dinamiche in base alla modalità
+  const labelBibita = potenziata ? ['2 bibite', 'omaggio'] : ['Bibita', 'omaggio'];
+  const labelSconto = potenziata ? ['Sconto', '15%'] : ['Sconto', '10%'];
   const spicchi = [
-    { val: 'bibita', colore: '#C8961E' },
-    { val: 'sconto10', colore: '#8B1A1A' },
-    { val: 'bibita', colore: '#2C5A2E' },
-    { val: 'sconto10', colore: '#C8961E' },
-    { val: 'bibita', colore: '#8B1A1A' },
-    { val: 'sconto10', colore: '#2C5A2E' },
+    { tipo: 'bibita', colore: '#C8961E' },
+    { tipo: 'sconto', colore: '#8B1A1A' },
+    { tipo: 'bibita', colore: '#2C5A2E' },
+    { tipo: 'sconto', colore: '#C8961E' },
+    { tipo: 'bibita', colore: '#8B1A1A' },
+    { tipo: 'sconto', colore: '#2C5A2E' },
   ];
   const conic = spicchi
     .map((s, i) => `${s.colore} ${i * gradiPerSpicchio}deg ${(i + 1) * gradiPerSpicchio}deg`)
     .join(', ');
+
+  // Determina testo premio vinto
+  const premioBibita = premio === 'bibita' || premio === 'bibita2';
+  const premioSconto = premio === 'sconto10' || premio === 'sconto15';
+  let premioTitolo = '';
+  if (premio === 'bibita') premioTitolo = 'Bibita in omaggio!';
+  else if (premio === 'bibita2') premioTitolo = '2 bibite in omaggio!';
+  else if (premio === 'sconto10') premioTitolo = 'Sconto 10%!';
+  else if (premio === 'sconto15') premioTitolo = 'Sconto 15%!';
+
+  const bordoColore = potenziata ? '#E0B84A' : '#C8961E';
 
   return (
     <div style={{
@@ -751,9 +890,14 @@ function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       zIndex: 99999, padding: 20,
     }}>
+      {potenziata && (
+        <div style={{ fontSize: 13, fontWeight: 900, color: '#3D1A00', background: 'linear-gradient(90deg,#E0B84A,#FFD86B)', padding: '4px 16px', borderRadius: 20, marginBottom: 10, letterSpacing: 1 }}>
+          ⭐ RUOTA POTENZIATA ⭐
+        </div>
+      )}
       <div style={{ fontSize: 26, fontWeight: 900, color: '#F2E8D5', marginBottom: 4, textAlign: 'center' }}>Ruota della Fortuna!</div>
       <div style={{ fontSize: 14, color: 'rgba(242,232,213,0.85)', marginBottom: 24, textAlign: 'center' }}>
-        {premio ? 'Complimenti!' : 'Hai speso piu di 15 euro: gira e vinci!'}
+        {premio ? 'Complimenti!' : (potenziata ? 'Hai speso piu di 50 euro: premi raddoppiati!' : 'Hai speso piu di 15 euro: gira e vinci!')}
       </div>
 
       <div style={{ position: 'relative', width: 280, height: 300 }}>
@@ -766,13 +910,14 @@ function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
           position: 'absolute', top: 20, left: '50%', marginLeft: -130,
           width: 260, height: 260, borderRadius: '50%',
           background: `conic-gradient(${conic})`,
-          border: '8px solid #C8961E', boxSizing: 'border-box',
-          boxShadow: '0 0 30px rgba(200,150,30,0.5)',
+          border: `8px solid ${bordoColore}`, boxSizing: 'border-box',
+          boxShadow: potenziata ? '0 0 40px rgba(224,184,74,0.8)' : '0 0 30px rgba(200,150,30,0.5)',
           transform: `rotate(${rotazione}deg)`,
           transition: 'transform 4.2s cubic-bezier(0.15, 0.7, 0.1, 1)',
         }}>
           {spicchi.map((s, i) => {
             const centro = i * gradiPerSpicchio + gradiPerSpicchio / 2;
+            const lbl = s.tipo === 'bibita' ? labelBibita : labelSconto;
             return (
               <div key={i} style={{
                 position: 'absolute', top: '50%', left: '50%', width: 0, height: 0,
@@ -783,18 +928,18 @@ function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
                   color: 'white', fontSize: 12, fontWeight: 800, textAlign: 'center',
                   lineHeight: 1.15, width: 64, textShadow: '0 1px 2px rgba(0,0,0,0.7)',
                 }}>
-                  {s.val === 'bibita' ? <><div>Bibita</div><div>omaggio</div></> : <><div>Sconto</div><div>10%</div></>}
+                  <div>{lbl[0]}</div><div>{lbl[1]}</div>
                 </div>
               </div>
             );
           })}
-          <div style={{ position: 'absolute', top: '50%', left: '50%', width: 22, height: 22, marginTop: -11, marginLeft: -11, background: '#fff', borderRadius: '50%', border: '3px solid #C8961E', zIndex: 2 }} />
+          <div style={{ position: 'absolute', top: '50%', left: '50%', width: 22, height: 22, marginTop: -11, marginLeft: -11, background: '#fff', borderRadius: '50%', border: `3px solid ${bordoColore}`, zIndex: 2 }} />
         </div>
       </div>
 
       {!premio ? (
         <button onClick={onGira} disabled={girando} style={{
-          background: girando ? '#8B7355' : '#C8961E', color: '#3D1A00', fontWeight: 900, fontSize: 18,
+          background: girando ? '#8B7355' : bordoColore, color: '#3D1A00', fontWeight: 900, fontSize: 18,
           border: 'none', borderRadius: 16, padding: '16px 50px', marginTop: 24,
           cursor: girando ? 'default' : 'pointer', fontFamily: 'inherit',
         }}>
@@ -803,9 +948,9 @@ function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
       ) : (
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24 }}>
           <div style={{ background: 'white', borderRadius: 16, padding: 20, textAlign: 'center', marginBottom: 16 }}>
-            <div style={{ fontSize: 40 }}>{premio === 'bibita' ? '🥤' : '🎟️'}</div>
+            <div style={{ fontSize: 40 }}>{premioBibita ? '🥤' : '🎟️'}</div>
             <div style={{ fontSize: 18, fontWeight: 900, color: '#3D1A00', marginTop: 8 }}>
-              {premio === 'bibita' ? 'Bibita in omaggio!' : 'Sconto 10%!'}
+              {premioTitolo}
             </div>
             <div style={{ fontSize: 13, color: '#8B7355', marginTop: 4 }}>Lo userai al tuo prossimo ordine</div>
           </div>
@@ -870,7 +1015,7 @@ function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
           {!farinata && (
             <div style={{ marginBottom: 16 }}>
               <div style={{ fontSize: 12, fontWeight: 800, color: '#8B7355', textTransform: 'uppercase', marginBottom: 8 }}>Impasto</div>
-              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: integrale ? '#FFF3D6' : 'white', border: `2px solid ${integrale ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
+              <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 14px', background: integrale ? '#FFF3D6' : '#FBF4E6', border: `2px solid ${integrale ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <input type="checkbox" checked={integrale} onChange={() => setIntegrale(v => !v)} style={{ width: 18, height: 18, accentColor: '#C8961E' }} />
                   <span style={{ fontSize: 14, color: '#5A2D0C', fontWeight: 600 }}>Impasto integrale</span>
@@ -884,7 +1029,7 @@ function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
           {AGGIUNTE.map(agg => {
             const attiva = !!sel.find(a => a.nome === agg.nome);
             return (
-              <label key={agg.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', marginBottom: 7, background: attiva ? '#FFF3D6' : 'white', border: `2px solid ${attiva ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
+              <label key={agg.nome} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '11px 14px', marginBottom: 7, background: attiva ? '#FFF3D6' : '#FBF4E6', border: `2px solid ${attiva ? '#C8961E' : 'rgba(0,0,0,0.08)'}`, borderRadius: 12, cursor: 'pointer' }}>
                 <span style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <input type="checkbox" checked={attiva} onChange={() => toggle(agg)} style={{ width: 18, height: 18, accentColor: '#C8961E' }} />
                   <span style={{ fontSize: 14, color: '#5A2D0C', fontWeight: 600 }}>{agg.nome}</span>
@@ -914,6 +1059,17 @@ function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
   );
 }
 
+// Etichetta di sezione: rombo dorato + testo + linea che sfuma
+function SecLabel({ testo }) {
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 12, marginHorizontal: 4 }}>
+      <Text style={{ color: C.oro, fontSize: 13 }}>◆</Text>
+      <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '800', letterSpacing: 2, color: C.grigio, textTransform: 'uppercase' }}>{testo}</Text>
+      <View style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #E8D5B0, transparent)' }} />
+    </View>
+  );
+}
+
 export default function App() {
   const [utente, setUtenteRaw] = useState(() => {
     try {
@@ -936,10 +1092,12 @@ export default function App() {
   const [combo, setCombo] = useState(null); // combo in corso di composizione: null o { pizze:4, dolci:4, bibite:4 }
   const [combosConfermate, setCombosConfermate] = useState(0); // quante combo già confermate (4 bibite gratis ciascuna)
   const [bibitaOmaggioId, setBibitaOmaggioId] = useState(null); // bibita scelta come omaggio premio ruota
+  const [bibitaOmaggioId2, setBibitaOmaggioId2] = useState(null); // seconda bibita (ruota potenziata)
   const [prodottoAggiunte, setProdottoAggiunte] = useState(null); // prodotto di cui scegliere le aggiunte (apre overlay)
   const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
   const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
+  const [ruotaPotenziata, setRuotaPotenziata] = useState(false); // true se ordine >=50€
   const [ruotaGirando, setRuotaGirando] = useState(false);
   const [ruotaPremio, setRuotaPremio] = useState(null);
   const [ruotaRotazione, setRuotaRotazione] = useState(0);
@@ -949,9 +1107,12 @@ export default function App() {
     setRuotaGirando(true);
     const N = 6;
     const gradiPerSpicchio = 360 / N;
-    // spicchi: 0,2,4 = bibita ; 1,3,5 = sconto10
-    const vincente = Math.random() < 0.5 ? 'bibita' : 'sconto10';
-    const indiciValidi = vincente === 'bibita' ? [0, 2, 4] : [1, 3, 5];
+    // Premi diversi se la ruota è potenziata (ordine >=50€)
+    const premioBibita = ruotaPotenziata ? 'bibita2' : 'bibita';
+    const premioSconto = ruotaPotenziata ? 'sconto15' : 'sconto10';
+    // spicchi: 0,2,4 = bibita ; 1,3,5 = sconto
+    const vincente = Math.random() < 0.5 ? premioBibita : premioSconto;
+    const indiciValidi = (vincente === premioBibita) ? [0, 2, 4] : [1, 3, 5];
     const idx = indiciValidi[Math.floor(Math.random() * indiciValidi.length)];
     const centroSpicchio = idx * gradiPerSpicchio + gradiPerSpicchio / 2;
     const target = 6 * 360 + (360 - centroSpicchio);
@@ -966,6 +1127,7 @@ export default function App() {
 
   const chiudiRuota = () => {
     setRuotaVisibile(false);
+    setRuotaPotenziata(false);
     setRuotaGirando(false);
     setRuotaPremio(null);
     setRuotaRotazione(0);
@@ -975,9 +1137,11 @@ export default function App() {
   };
 
   useEffect(() => {
-    const t = setInterval(() => setOra(new Date()), 60000);
+    const t = setInterval(() => setOra(new Date()), 30000);
     return () => clearInterval(t);
   }, []);
+
+  const apertura = statoApertura(ora); // { aperto, prossimaApertura }
 
   if (!utente) return <LoginScreen onLogin={setUtente} />;
 
@@ -1001,6 +1165,13 @@ export default function App() {
 
   // Aggiunge un prodotto con aggiunte/integrale scelte (dal pannello aggiunte)
   const aggiungiConAggiunte = (item, aggiunteSel, integrale) => {
+    // Rispetta il tetto della combo in corso (pizze/dolci), come per l'aggiunta normale
+    if (combo) {
+      const tot = (pred) => cart.filter(c => pred(c.id)).reduce((s, c) => s + c.qty, 0);
+      const base = combosConfermate * 4;
+      if (isPizzaCombo(item.id) && tot(isPizzaCombo) >= base + combo.pizze) { alert('Hai già 4 pizze in questa combo. Conferma la combo per aggiungere altro.'); return; }
+      if (isDolceCombo(item.id) && tot(isDolceCombo) >= base + combo.dolci) { alert('Hai già 4 dolci in questa combo. Conferma la combo per aggiungere altro.'); return; }
+    }
     const costoAggiunte = aggiunteSel.reduce((s, a) => s + a.prezzo, 0) + (integrale ? IMPASTO_INTEGRALE.prezzo : 0);
     const prezzoFinale = item.price + costoAggiunte;
     // chiave univoca: id + nomi aggiunte ordinati + integrale
@@ -1051,16 +1222,31 @@ export default function App() {
   // Premio attivo dal giro ruota precedente
   let scontoPremio = 0;
   let premioLabel = '';
+  const tuttiProd = Object.values(MENU).flat();
   if (utente.premio === 'sconto10' && cartTotalDopoCombo > 0) {
     scontoPremio = cartTotalDopoCombo * 0.10;
     premioLabel = 'Sconto 10% (premio ruota)';
+  } else if (utente.premio === 'sconto15' && cartTotalDopoCombo > 0) {
+    scontoPremio = cartTotalDopoCombo * 0.15;
+    premioLabel = 'Sconto 15% (premio ruota potenziata)';
   } else if (utente.premio === 'bibita' && bibitaOmaggioId) {
     // sconta la bibita scelta dal cliente (una unità)
-    const bevandaScelta = Object.values(MENU).flat().find(p => p.id === bibitaOmaggioId);
+    const bevandaScelta = tuttiProd.find(p => p.id === bibitaOmaggioId);
     const nelCarrello = cart.find(c => c.id === bibitaOmaggioId);
     if (bevandaScelta && nelCarrello) {
       scontoPremio = bevandaScelta.price;
       premioLabel = 'Bibita omaggio (premio ruota)';
+    }
+  } else if (utente.premio === 'bibita2') {
+    // ruota potenziata: due bibite a scelta gratis
+    const b1 = bibitaOmaggioId ? tuttiProd.find(p => p.id === bibitaOmaggioId) : null;
+    const b2 = bibitaOmaggioId2 ? tuttiProd.find(p => p.id === bibitaOmaggioId2) : null;
+    let tot = 0;
+    if (b1 && cart.find(c => c.id === bibitaOmaggioId)) tot += b1.price;
+    if (b2 && cart.find(c => c.id === bibitaOmaggioId2)) tot += b2.price;
+    if (tot > 0) {
+      scontoPremio = tot;
+      premioLabel = '2 bibite omaggio (premio ruota potenziata)';
     }
   }
   const cartTotal = Math.max(0, cartTotalDopoCombo - scontoPremio);
@@ -1068,12 +1254,16 @@ export default function App() {
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
     const spedizione = tipoOrdine === 'domicilio' ? 2.5 : 0;
     // Costruisce un riepilogo dettagliato per la cucina
-    const nomeBibitaOmaggio = bibitaOmaggioId ? (Object.values(MENU).flat().find(p => p.id === bibitaOmaggioId)?.name || '') : '';
+    const tuttiProdK = Object.values(MENU).flat();
+    const nomeBibitaOmaggio = bibitaOmaggioId ? (tuttiProdK.find(p => p.id === bibitaOmaggioId)?.name || '') : '';
+    const nomeBibitaOmaggio2 = bibitaOmaggioId2 ? (tuttiProdK.find(p => p.id === bibitaOmaggioId2)?.name || '') : '';
     const righeRiepilogo = [];
     righeRiepilogo.push(`Subtotale: € ${cartTotalRaw.toFixed(2)}`);
     if (scontoCombo > 0) righeRiepilogo.push(`Sconto combo (bibite omaggio): -€ ${scontoCombo.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'sconto10') righeRiepilogo.push(`Sconto 10% (premio ruota): -€ ${scontoPremio.toFixed(2)}`);
+    if (scontoPremio > 0 && utente.premio === 'sconto15') righeRiepilogo.push(`Sconto 15% (premio ruota potenziata): -€ ${scontoPremio.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'bibita') righeRiepilogo.push(`Bibita OMAGGIO (premio ruota): ${nomeBibitaOmaggio} -€ ${scontoPremio.toFixed(2)}`);
+    if (scontoPremio > 0 && utente.premio === 'bibita2') righeRiepilogo.push(`2 bibite OMAGGIO (ruota potenziata): ${[nomeBibitaOmaggio, nomeBibitaOmaggio2].filter(Boolean).join(' + ')} -€ ${scontoPremio.toFixed(2)}`);
     if (spedizione > 0) righeRiepilogo.push(`Consegna a domicilio: +€ ${spedizione.toFixed(2)}`);
     const manciaEffettiva = manciaConfermata && mancia > 0 ? mancia : 0;
     if (manciaEffettiva > 0) righeRiepilogo.push(`Mancia al locale: +€ ${manciaEffettiva.toFixed(2)}`);
@@ -1121,11 +1311,18 @@ export default function App() {
     setCombo(null);
     setCombosConfermate(0);
     setBibitaOmaggioId(null);
+    setBibitaOmaggioId2(null);
     setMancia(0);
     setManciaConfermata(false);
     setOrdered(true);
-    // Ruota: ordine >=15€ e nessun premio era già in sospeso, e non ne ha appena vinto uno
-    if (totaleOrdine >= 15 && !premioInSospeso) {
+    // Ruota premio: dipende SOLO dalla soglia di spesa di questo ordine.
+    // >=50€ -> ruota POTENZIATA (2 bibite o 15%). >=15€ -> ruota normale (1 bibita o 10%).
+    // (Non dipende più da eventuali premi precedenti: ogni ordine idoneo dà il suo giro.)
+    if (totaleOrdine >= 50) {
+      setRuotaPotenziata(true);
+      setTimeout(() => setRuotaVisibile(true), 800);
+    } else if (totaleOrdine >= 15) {
+      setRuotaPotenziata(false);
       setTimeout(() => setRuotaVisibile(true), 800);
     }
   };
@@ -1135,90 +1332,143 @@ export default function App() {
 
   const Home = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-      <TouchableOpacity style={S.heroBanner} activeOpacity={0.85} onPress={() => setTab('profilo')}>
-        <View style={{ flex: 1 }}>
-          <Text style={S.heroGreeting}>Ciao {utente.nome}!</Text>
-          <Text style={S.heroName}>Il tuo profilo</Text>
-          <Text style={S.heroSlogan}>Tocca per modificare i tuoi dati →</Text>
-        </View>
-        <View style={{ alignItems: 'flex-end' }}>
-          <Text style={{ fontSize: 28, color: C.oro, fontWeight: '900' }}>{oraStr}</Text>
-          <Text style={{ fontSize: 10, color: 'rgba(242,232,213,0.6)', marginTop: 2, textAlign: 'right' }}>{dataStr}</Text>
-        </View>
-      </TouchableOpacity>
-
-      <Text style={S.secLabel}>ORDINA ORA</Text>
-      <TouchableOpacity style={[S.quickBtn, { backgroundColor: C.rosso, marginBottom: 16 }]} onPress={() => setTab('menu')}>
-        <Text style={{ fontSize: 32 }}>🍕</Text>
-        <Text style={S.quickLabel}>Ordina ora</Text>
-        <Text style={S.quickSub}>Domicilio o asporto</Text>
-      </TouchableOpacity>
-
-      <Text style={S.secLabel}>PANE FRESCO</Text>
-      <View style={S.paneCard}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-          <Text style={{ fontSize: 28 }}>🍞</Text>
-          <View>
-            <Text style={S.paneTitolo}>Pane del Forno a Legna</Text>
-            <Text style={S.paneSub}>Fresco ogni mattina dal forno a legna!</Text>
-          </View>
-        </View>
-        <TouchableOpacity style={S.paneBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
-          <Text style={S.paneBtnText}>Prenota il tuo filone →</Text>
+      {/* HERO con braci e spicchio */}
+      <View style={[S.hero, { background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)' }]}>
+        <View style={[S.ember, { width: 60, height: 60, top: -10, right: 30, opacity: 0.5, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <View style={[S.ember, { width: 30, height: 30, bottom: 24, right: 90, opacity: 0.35, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <View style={[S.ember, { width: 14, height: 14, top: 70, right: 22, opacity: 0.6, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <svg width="170" height="170" viewBox="0 0 200 200" fill="none" style={{ position: 'absolute', right: -28, bottom: -38, opacity: 0.92 }}>
+          <path d="M100 10 L190 170 Q100 200 10 170 Z" fill="#E8B84B"/>
+          <path d="M100 30 L175 165 Q100 190 25 165 Z" fill="#C0392B" opacity="0.85"/>
+          <circle cx="80" cy="120" r="11" fill="#F2E8D5"/>
+          <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
+          <circle cx="120" cy="145" r="10" fill="#F2E8D5"/>
+          <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
+          <circle cx="100" cy="125" r="6" fill="#2C5A2E"/>
+        </svg>
+        <Text style={S.heroTag}>La nostra passione, la tua pizza</Text>
+        <Text style={S.heroBig}>Ordina ora</Text>
+        <Text style={S.heroSub}>Domicilio o asporto · pronta in 25-35 min</Text>
+        <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
+          <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
+          <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
         </TouchableOpacity>
       </View>
 
-      <Text style={S.secLabel}>OFFERTE</Text>
-      <TouchableOpacity style={S.offerBig} onPress={() => setTab('offers')}>
-        <View>
-          <Text style={S.offerBigTitle}>Combo Famiglia</Text>
-          <Text style={S.offerBigDesc}>4 pizze + 4 dolci a scelta</Text>
-          <Text style={{ color: C.oro, fontSize: 12, marginTop: 6, fontStyle: 'italic' }}>4 bibite in omaggio!</Text>
+      {/* Profilo veloce */}
+      <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
+        <View style={[S.profiloMiniIcon, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 20 }}>👤</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={S.profiloMiniNome}>Ciao {utente.nome}!</Text>
+          <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
         </View>
-        <Text style={{ fontSize: 52 }}>🎁</Text>
+        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
       </TouchableOpacity>
 
-      <Text style={S.secLabel}>INFORMAZIONI</Text>
-      <View style={[S.tilesRow, { marginBottom: 24 }]}>
-        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
-          <Text style={S.tileIcon}>📍</Text>
-          <Text style={S.tileTitle}>Dove siamo</Text>
-          <Text style={S.tileVal}>C.so Giambone 8/b{'\n'}Torino</Text>
-        </TouchableOpacity>
-        <View style={S.tile}>
-          <Text style={S.tileIcon}>🕐</Text>
-          <Text style={S.tileTitle}>Orari</Text>
-          <Text style={S.tileVal}>LUN-DOM{'\n'}12:00-14:30{'\n'}18:00-22:45</Text>
+      {/* OFFERTE */}
+      <SecLabel testo="Offerte" />
+      <TouchableOpacity style={[S.comboCard, { background: 'radial-gradient(circle at 90% 10%, rgba(232,184,75,0.3), transparent 50%), linear-gradient(145deg, #8B1A1A 0%, #5C0F0F 100%)' }]} activeOpacity={0.9} onPress={() => setTab('offers')}>
+        <Text style={S.comboGift}>🎁</Text>
+        <Text style={S.comboTitle}>Combo Famiglia</Text>
+        <View style={{ marginTop: 4 }}>
+          <Text style={S.comboLi}>✓  4 pizze a scelta</Text>
+          <Text style={S.comboLi}>✓  4 dolci a scelta</Text>
+          <Text style={S.comboLi}>✓  4 bibite in omaggio</Text>
         </View>
-        <TouchableOpacity style={S.tile} activeOpacity={0.7} onPress={() => {
+        <Text style={S.comboCta}>Scopri l'offerta →</Text>
+      </TouchableOpacity>
+
+      {/* PANE */}
+      <SecLabel testo="Dal forno a legna" />
+      <View style={S.paneCardNew}>
+        <Text style={{ fontSize: 30 }}>🍞</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={S.paneTitoloNew}>Pane del Forno a Legna</Text>
+          <Text style={S.paneSubNew}>Fresco ogni mattina, solo su preordine</Text>
+        </View>
+        <TouchableOpacity style={S.paneBtnNew} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
+          <Text style={S.paneBtnTextNew}>Prenota →</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* RUOTE */}
+      <SecLabel testo="Gira e vinci" />
+      <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <View style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)' }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
+            <Text style={S.rewardsSub}>Ad ogni ordine puoi vincere</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={{ fontSize: 22 }}>🥤</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={S.tierTitle}>Ordini sopra 15€</Text>
+            <Text style={S.tierSub}>Bibita omaggio o sconto 10%</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(232,184,75,0.18)', borderWidth: 1, borderColor: 'rgba(232,184,75,0.4)', marginTop: 8 }]}>
+          <Text style={{ fontSize: 22 }}>⭐</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[S.tierTitle, { color: '#FFE9A8' }]}>Ordini sopra 50€</Text>
+            <Text style={[S.tierSub, { color: 'rgba(255,233,168,0.85)' }]}>Ruota potenziata: 2 bibite o sconto 15%</Text>
+          </View>
+        </View>
+      </View>
+
+      {/* INFO */}
+      <SecLabel testo="Dove trovarci" />
+      <View style={S.tilesRow}>
+        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
+          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📍</Text></View>
+          <Text style={S.tileTitleNew}>Dove siamo</Text>
+          <Text style={S.tileValNew}>C.so Giambone 8/b{'\n'}Torino</Text>
+        </TouchableOpacity>
+        <View style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]}>
+          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>🕐</Text></View>
+          <Text style={S.tileTitleNew}>Orari</Text>
+          <Text style={S.tileValNew}>12:00-14:30{'\n'}18:15-22:45</Text>
+        </View>
+        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => {
           const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310');
           window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310';
         }}>
-          <Text style={S.tileIcon}>📞</Text>
-          <Text style={S.tileTitle}>Telefono</Text>
-          <Text style={S.tileVal}>331 5695959{'\n'}011 0362310</Text>
+          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📞</Text></View>
+          <Text style={S.tileTitleNew}>Telefono</Text>
+          <Text style={S.tileValNew}>331 5695959{'\n'}011 0362310</Text>
         </TouchableOpacity>
       </View>
 
-      <Text style={S.secLabel}>SEGUICI</Text>
-      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+      {/* SOCIAL */}
+      <SecLabel testo="Seguici" />
+      <View style={{ flexDirection: 'row', gap: 20, marginBottom: 28, justifyContent: 'center' }}>
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: '#E1306C', borderRadius: 16, padding: 16, alignItems: 'center' }}
           activeOpacity={0.8}
           onPress={() => window.open('https://www.instagram.com/pizzicata_pizzeria', '_blank')}
+          style={{
+            width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center',
+            background: 'radial-gradient(circle at 30% 110%, #FEDA75 0%, #FA7E1E 25%, #D62976 50%, #962FBF 75%, #4F5BD5 100%)',
+            boxShadow: '0 4px 12px rgba(214,41,118,0.4)',
+          }}
         >
-          <Text style={{ fontSize: 28 }}>📷</Text>
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 14, marginTop: 4 }}>Instagram</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>@pizzicata_pizzeria</Text>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
         </TouchableOpacity>
         <TouchableOpacity
-          style={{ flex: 1, backgroundColor: '#000000', borderRadius: 16, padding: 16, alignItems: 'center' }}
           activeOpacity={0.8}
           onPress={() => window.open('https://www.tiktok.com/@pizzicatapizzeria', '_blank')}
+          style={{
+            width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center',
+            backgroundColor: '#000000', boxShadow: '0 4px 12px rgba(0,0,0,0.35)',
+          }}
         >
-          <Text style={{ fontSize: 28 }}>🎵</Text>
-          <Text style={{ color: 'white', fontWeight: '800', fontSize: 14, marginTop: 4 }}>TikTok</Text>
-          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>@pizzicatapizzeria</Text>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+          </svg>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -1290,7 +1540,7 @@ export default function App() {
         </View>
       )}
       {MENU[cat].map(item => {
-        const conAggiunte = CATEGORIE_CON_AGGIUNTE.includes(cat) && !combo;
+        const conAggiunte = CATEGORIE_CON_AGGIUNTE.includes(cat);
         // quantità: per categorie con aggiunte somma tutte le righe con stesso id
         const qty = conAggiunte
           ? cart.filter(c => c.id === item.id).reduce((s, c) => s + c.qty, 0)
@@ -1339,18 +1589,51 @@ export default function App() {
   };
 
   const Offers = () => (
-    <ScrollView style={S.scroll}>
-      <View style={[S.offerCard, { backgroundColor: C.rosso }]}>
-        <Text style={S.offerTitle}>Combo Famiglia</Text>
-        <Text style={S.offerDesc}>4 pizze a scelta + 4 dolci a scelta</Text>
-        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, marginTop: 12 }}>
-          <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OMAGGIO INCLUSO</Text>
-          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>4 bibite a scelta (escluse birre)</Text>
+    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      <View style={{ paddingTop: 6 }}>
+        <Text style={{ fontFamily: FONT_TITOLO, fontSize: 26, fontWeight: '900', color: C.marrone, marginBottom: 2 }}>Le nostre offerte</Text>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 18 }}>Approfitta delle promozioni e gira la ruota!</Text>
+      </View>
+
+      <View style={[S.offerCardNew, { background: 'radial-gradient(circle at 90% 8%, rgba(232,184,75,0.32), transparent 50%), linear-gradient(145deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
+        <Text style={{ position: 'absolute', right: 14, bottom: 4, fontSize: 72, opacity: 0.16 }}>🎁</Text>
+        <View style={S.offerBadgeNew}><Text style={S.offerBadgeNewText}>COMBO</Text></View>
+        <Text style={S.offerTitleNew}>Combo Famiglia</Text>
+        <Text style={S.offerDescNew}>4 pizze a scelta + 4 dolci a scelta</Text>
+        <View style={{ backgroundColor: 'rgba(232,184,75,0.18)', borderRadius: 12, padding: 12, marginTop: 14, borderWidth: 1, borderColor: 'rgba(232,184,75,0.4)' }}>
+          <Text style={{ fontFamily: FONT_TESTO, color: C.oroChiaro, fontWeight: '800', fontSize: 13, letterSpacing: 1 }}>🥤 OMAGGIO INCLUSO</Text>
+          <Text style={{ fontFamily: FONT_TESTO, color: 'rgba(242,232,213,0.9)', fontSize: 13, marginTop: 4 }}>4 bibite a scelta (escluse birre e spritz)</Text>
         </View>
-        <TouchableOpacity style={S.offerBtn} onPress={() => { setCombo({ pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); setTab('menu'); }}>
-          <Text style={S.offerBtnText}>Inizia la combo</Text>
+        <TouchableOpacity style={[S.offerBtnNew, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} onPress={() => { setCombo({ pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); setTab('menu'); }}>
+          <Text style={S.offerBtnTextNew}>Inizia la combo →</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Ruote premio */}
+      <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)', marginTop: 16 }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <View style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)' }]} />
+          <View style={{ flex: 1 }}>
+            <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
+            <Text style={S.rewardsSub}>Su ogni ordine idoneo</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={{ fontSize: 22 }}>🥤</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={S.tierTitle}>Ordini sopra 15€</Text>
+            <Text style={S.tierSub}>Bibita omaggio o sconto 10%</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(232,184,75,0.18)', borderWidth: 1, borderColor: 'rgba(232,184,75,0.4)', marginTop: 8 }]}>
+          <Text style={{ fontSize: 22 }}>⭐</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[S.tierTitle, { color: '#FFE9A8' }]}>Ordini sopra 50€</Text>
+            <Text style={[S.tierSub, { color: 'rgba(255,233,168,0.85)' }]}>Ruota potenziata: 2 bibite o sconto 15%</Text>
+          </View>
+        </View>
+      </View>
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 
@@ -1381,7 +1664,7 @@ export default function App() {
       setTimeout(() => setSalvato(false), 2000);
     };
 
-    const inputStyleP = { width: '100%', padding: 12, fontSize: 15, borderRadius: 10, border: '1px solid #E8D5B0', backgroundColor: 'white', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
+    const inputStyleP = { width: '100%', padding: 12, fontSize: 15, borderRadius: 10, border: '1px solid #E8D5B0', backgroundColor: '#FFFCF6', boxSizing: 'border-box', outline: 'none', fontFamily: 'inherit' };
 
     return (
       <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
@@ -1395,15 +1678,18 @@ export default function App() {
           <TouchableOpacity
             activeOpacity={0.9}
             onPress={() => setTab('menu')}
-            style={{ backgroundColor: utente.premio === 'bibita' ? '#C8961E' : '#8B1A1A', borderRadius: 18, padding: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 14, boxShadow: '0 4px 16px rgba(200,150,30,0.35)' }}
+            style={{ backgroundColor: (utente.premio === 'bibita' || utente.premio === 'bibita2') ? '#C8961E' : '#8B1A1A', borderRadius: 18, padding: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 14, boxShadow: '0 4px 16px rgba(200,150,30,0.35)' }}
           >
-            <Text style={{ fontSize: 44 }}>{utente.premio === 'bibita' ? '🥤' : '🎟️'}</Text>
+            <Text style={{ fontSize: 44 }}>{(utente.premio === 'bibita' || utente.premio === 'bibita2') ? '🥤' : '🎟️'}</Text>
             <View style={{ flex: 1 }}>
               <Text style={{ color: 'white', fontWeight: '900', fontSize: 17 }}>
                 🎉 Hai un premio che ti aspetta!
               </Text>
               <Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: 14, marginTop: 4 }}>
-                {utente.premio === 'bibita' ? 'Una bibita in OMAGGIO sul prossimo ordine' : 'SCONTO 10% sul prossimo ordine'}
+                {utente.premio === 'bibita' ? 'Una bibita in OMAGGIO sul prossimo ordine'
+                  : utente.premio === 'bibita2' ? '2 bibite in OMAGGIO sul prossimo ordine'
+                  : utente.premio === 'sconto15' ? 'SCONTO 15% sul prossimo ordine'
+                  : 'SCONTO 10% sul prossimo ordine'}
               </Text>
               <Text style={{ color: 'white', fontSize: 13, fontWeight: '800', marginTop: 8 }}>
                 Ordina ora per usarlo →
@@ -1536,7 +1822,7 @@ export default function App() {
           let items = [];
           try { items = JSON.parse(o.items); } catch {}
           return (
-            <View key={o.id} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: info.colore }}>
+            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: info.colore }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
                 <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
                 <Text style={{ fontSize: 13, fontWeight: '800', color: C.rosso }}>€ {Number(o.totale).toFixed(2)}</Text>
@@ -1564,7 +1850,7 @@ export default function App() {
           let items = [];
           try { items = JSON.parse(o.items); } catch {}
           return (
-            <View key={o.id} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 }}>
+            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12 }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
                 <Text style={{ fontSize: 13, fontWeight: '800', color: C.marrone }}>€ {Number(o.totale).toFixed(2)}</Text>
@@ -1590,7 +1876,7 @@ export default function App() {
   const screens = {
     home: Home(),
     menu: Menu(),
-    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
+    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} bibitaOmaggioId2={bibitaOmaggioId2} setBibitaOmaggioId2={setBibitaOmaggioId2} mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata} apertura={apertura} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
     offers: Offers(),
     profilo: <Profilo />,
     ordini: <Ordini />,
@@ -1604,6 +1890,7 @@ export default function App() {
           girando={ruotaGirando}
           premio={ruotaPremio}
           rotazione={ruotaRotazione}
+          potenziata={ruotaPotenziata}
           onGira={giraRuota}
           onChiudi={chiudiRuota}
         />
@@ -1615,7 +1902,7 @@ export default function App() {
           onChiudi={() => setProdottoAggiunte(null)}
         />
       )}
-      <View style={S.header}>
+      <View style={[S.header, { background: 'radial-gradient(circle at 80% -20%, rgba(232,184,75,0.35), transparent 50%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
         <View style={S.flagBar}>
           <View style={[S.flagSeg, { backgroundColor: '#2D5A27' }]} />
           <View style={[S.flagSeg, { backgroundColor: '#FFFFFF' }]} />
@@ -1623,15 +1910,26 @@ export default function App() {
         </View>
         <View style={S.headerInner}>
           <View>
-            <Text style={S.headerLogo}>Pizzicata</Text>
-            <Text style={S.headerSub}>- TORINO -</Text>
+            <Text style={S.headerLogo}>Pizzicata<Text style={{ color: C.oroChiaro }}>.</Text></Text>
+            <Text style={S.headerSub}>— TORINO —</Text>
           </View>
-          {cartN > 0 && (
-            <TouchableOpacity style={S.cartBadge} onPress={() => setTab('cart')}>
-              <Text style={{ fontSize: 22 }}>🛒</Text>
-              <View style={S.cartDot}><Text style={S.cartDotText}>{cartN}</Text></View>
-            </TouchableOpacity>
-          )}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: apertura.aperto ? 'rgba(45,90,39,0.9)' : 'rgba(0,0,0,0.35)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
+              <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: apertura.aperto ? '#7BE07B' : '#C0392B', marginRight: 6 }} />
+              <View>
+                <Text style={{ color: 'white', fontSize: 11, fontWeight: '800' }}>{apertura.aperto ? 'Aperti ora' : 'Chiusi'}</Text>
+                {!apertura.aperto && apertura.prossimaApertura && (
+                  <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 9 }}>Riapre alle {apertura.prossimaApertura}</Text>
+                )}
+              </View>
+            </View>
+            {cartN > 0 && (
+              <TouchableOpacity style={S.cartBadge} onPress={() => setTab('cart')}>
+                <Text style={{ fontSize: 22 }}>🛒</Text>
+                <View style={S.cartDot}><Text style={S.cartDotText}>{cartN}</Text></View>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
       <View style={{ flex: 1 }}>{screens[tab]}</View>
@@ -1644,16 +1942,15 @@ export default function App() {
           { key: 'offers', icon: '🎁', label: 'Offerte' },
         ].map(n => (
           <TouchableOpacity key={n.key} style={S.navBtn} onPress={() => setTab(n.key)}>
-            <View>
-              <Text style={{ fontSize: 22 }}>{n.icon}</Text>
+            <View style={[S.navIcon, tab === n.key && S.navIconOn, tab === n.key && { background: 'linear-gradient(135deg, #E8B84B, #C8961E)' }]}>
+              <Text style={{ fontSize: 18 }}>{n.icon}</Text>
               {n.key === 'cart' && cartN > 0 && (
-                <View style={{ position: 'absolute', top: -4, right: -10, backgroundColor: C.oro, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
-                  <Text style={{ color: C.marrone, fontSize: 11, fontWeight: '800' }}>{cartN}</Text>
+                <View style={{ position: 'absolute', top: -4, right: -6, backgroundColor: C.rosso, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800' }}>{cartN}</Text>
                 </View>
               )}
             </View>
             <Text style={[S.navLabel, tab === n.key && S.navLabelOn]}>{n.label}</Text>
-            {tab === n.key && <View style={S.navDot} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -1662,25 +1959,102 @@ export default function App() {
 }
 
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: C.crema },
+  root: { flex: 1, backgroundColor: '#F7EFDF' },
   scroll: { flex: 1, paddingHorizontal: 16, paddingTop: 16 },
-  header: { backgroundColor: C.rosso, paddingTop: 40 },
-  flagBar: { flexDirection: 'row', height: 14, borderTopWidth: 2, borderBottomWidth: 2, borderColor: C.oro },
+
+  // HERO
+  hero: {
+    position: 'relative', borderRadius: 22, padding: 24, overflow: 'hidden', marginBottom: 16,
+    backgroundColor: '#1c3a1d',
+    background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)',
+    boxShadow: '0 12px 30px rgba(20,40,20,0.4), inset 0 1px 0 rgba(255,255,255,0.08)',
+  },
+  ember: { position: 'absolute', borderRadius: 999, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' },
+  heroTag: { fontFamily: FONT_TITOLO, fontStyle: 'italic', fontSize: 14, color: C.oroChiaro, marginBottom: 6, fontWeight: '600', position: 'relative', zIndex: 2 },
+  heroBig: { fontFamily: FONT_TITOLO, fontWeight: '900', fontSize: 40, lineHeight: 40, color: C.crema, letterSpacing: -1, marginBottom: 8, position: 'relative', zIndex: 2, textShadow: '0 3px 16px rgba(0,0,0,0.4)' },
+  heroSub: { fontFamily: FONT_TESTO, fontSize: 13, color: 'rgba(242,232,213,0.75)', marginBottom: 20, position: 'relative', zIndex: 2 },
+  ctaOrdina: {
+    flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start', gap: 12,
+    backgroundColor: '#C8961E',
+    background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)',
+    paddingVertical: 14, paddingHorizontal: 24, borderRadius: 50, position: 'relative', zIndex: 2,
+    boxShadow: '0 8px 22px rgba(200,150,30,0.45), inset 0 1px 0 rgba(255,255,255,0.5)',
+  },
+  ctaOrdinaText: { fontFamily: FONT_TESTO, color: C.marrone, fontWeight: '800', fontSize: 16 },
+  ctaArrow: { width: 30, height: 30, borderRadius: 15, backgroundColor: C.marrone, alignItems: 'center', justifyContent: 'center' },
+
+  // Profilo mini
+  profiloMini: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FBF4E6', borderRadius: 16, padding: 14, marginBottom: 4, borderWidth: 1, borderColor: C.cremaScuro, boxShadow: '0 4px 12px rgba(140,90,20,0.08)' },
+  profiloMiniIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)', boxShadow: 'inset 0 0 0 1px #E8D5B0' },
+  profiloMiniNome: { fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone },
+  profiloMiniSub: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 1 },
+
+  // Combo card
+  comboCard: {
+    position: 'relative', borderRadius: 20, padding: 22, overflow: 'hidden', marginBottom: 16,
+    backgroundColor: '#8B1A1A',
+    background: 'radial-gradient(circle at 90% 10%, rgba(232,184,75,0.3), transparent 50%), linear-gradient(145deg, #8B1A1A 0%, #5C0F0F 100%)',
+    boxShadow: '0 10px 26px rgba(140,20,20,0.35), inset 0 1px 0 rgba(255,255,255,0.1)',
+  },
+  comboGift: { position: 'absolute', right: 14, bottom: 2, fontSize: 70, opacity: 0.18 },
+  comboBadge: { alignSelf: 'flex-start', backgroundColor: C.oroChiaro, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 10, marginBottom: 10 },
+  comboBadgeText: { fontFamily: FONT_TESTO, fontSize: 10, fontWeight: '800', letterSpacing: 1, color: C.marrone },
+  comboTitle: { fontFamily: FONT_TITOLO, fontWeight: '900', fontSize: 24, color: C.crema, marginBottom: 6 },
+  comboLi: { fontFamily: FONT_TESTO, color: 'rgba(242,232,213,0.9)', fontSize: 13, marginVertical: 2 },
+  comboCta: { fontFamily: FONT_TESTO, color: C.oroChiaro, fontWeight: '800', fontSize: 13, marginTop: 12 },
+
+  // Pane
+  paneCardNew: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FBF4E6', borderRadius: 18, padding: 16, marginBottom: 4, borderWidth: 1, borderColor: C.cremaScuro, boxShadow: '0 4px 12px rgba(140,90,20,0.08)' },
+  paneTitoloNew: { fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone },
+  paneSubNew: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 1 },
+  paneBtnNew: { backgroundColor: C.verde, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
+  paneBtnTextNew: { fontFamily: FONT_TESTO, color: '#fff', fontWeight: '800', fontSize: 13 },
+
+  // Rewards
+  rewards: { borderRadius: 20, padding: 18, marginBottom: 4, overflow: 'hidden', backgroundColor: '#1c3a1d', background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)', boxShadow: '0 10px 26px rgba(28,58,29,0.4)' },
+  wheelMini: { width: 46, height: 46, borderRadius: 23, background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', borderWidth: 3, borderColor: C.oroChiaro, boxShadow: '0 0 16px rgba(232,184,75,0.5)' },
+  rewardsTitle: { fontFamily: FONT_TITOLO, fontWeight: '900', color: '#fff', fontSize: 17 },
+  rewardsSub: { fontFamily: FONT_TESTO, color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+  tier: { flexDirection: 'row', alignItems: 'center', gap: 10, borderRadius: 12, padding: 11 },
+  tierTitle: { fontFamily: FONT_TESTO, color: '#fff', fontSize: 13, fontWeight: '800' },
+  tierSub: { fontFamily: FONT_TESTO, color: 'rgba(255,255,255,0.7)', fontSize: 11 },
+
+  // Info tiles
+  tileNew: { flex: 1, background: 'linear-gradient(160deg, #fff, #FBF3E4)', borderWidth: 1, borderColor: C.cremaScuro, borderRadius: 16, padding: 12, alignItems: 'center', boxShadow: '0 4px 12px rgba(140,90,20,0.08)' },
+  tileIconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 8, background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)', boxShadow: 'inset 0 0 0 1px #E8D5B0' },
+  tileTitleNew: { fontFamily: FONT_TESTO, fontSize: 11, color: C.rosso, fontWeight: '800', marginBottom: 4 },
+  tileValNew: { fontFamily: FONT_TESTO, fontSize: 10, color: C.grigio, lineHeight: 14, textAlign: 'center' },
+
+  // Offerte
+  offerCardNew: { position: 'relative', borderRadius: 20, padding: 22, overflow: 'hidden', backgroundColor: '#8B1A1A', boxShadow: '0 10px 26px rgba(140,20,20,0.35), inset 0 1px 0 rgba(255,255,255,0.1)' },
+  offerBadgeNew: { alignSelf: 'flex-start', backgroundColor: C.oroChiaro, borderRadius: 20, paddingVertical: 4, paddingHorizontal: 12, marginBottom: 10 },
+  offerBadgeNewText: { fontFamily: FONT_TESTO, fontSize: 10, fontWeight: '800', letterSpacing: 1.5, color: C.marrone },
+  offerTitleNew: { fontFamily: FONT_TITOLO, fontWeight: '900', fontSize: 26, color: C.crema, marginBottom: 6 },
+  offerDescNew: { fontFamily: FONT_TESTO, fontSize: 14, color: 'rgba(242,232,213,0.85)' },
+  offerBtnNew: { backgroundColor: C.oro, borderRadius: 14, padding: 15, alignItems: 'center', marginTop: 16, boxShadow: '0 6px 16px rgba(200,150,30,0.4)' },
+  offerBtnTextNew: { fontFamily: FONT_TESTO, color: C.marrone, fontWeight: '800', fontSize: 15 },
+
+  header: {
+    paddingTop: 40,
+    backgroundColor: '#8B1A1A',
+    background: 'radial-gradient(circle at 80% -20%, rgba(232,184,75,0.35), transparent 50%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)',
+  },
+  flagBar: { flexDirection: 'row', height: 6 },
   flagSeg: { flex: 1 },
-  headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 8 },
-  headerLogo: { fontSize: 26, fontWeight: '900', color: C.crema, letterSpacing: -1 },
-  headerSub: { fontSize: 9, color: C.oro, letterSpacing: 4, marginTop: 1 },
+  headerInner: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 10 },
+  headerLogo: { fontFamily: FONT_TITOLO, fontSize: 28, fontWeight: '900', color: C.crema, letterSpacing: -0.5, textShadow: '0 2px 12px rgba(0,0,0,0.35)' },
+  headerSub: { fontFamily: FONT_TESTO, fontSize: 9, color: 'rgba(242,232,213,0.65)', letterSpacing: 4, marginTop: 2, fontWeight: '600' },
   cartBadge: { position: 'relative', padding: 4 },
   cartDot: { position: 'absolute', top: 0, right: 0, backgroundColor: C.oro, borderRadius: 10, width: 18, height: 18, alignItems: 'center', justifyContent: 'center' },
   cartDotText: { fontSize: 10, fontWeight: 'bold', color: C.marrone },
-  loginHeader: { backgroundColor: C.rosso, paddingTop: 60, paddingBottom: 24, alignItems: 'center' },
-  loginLogo: { fontSize: 42, fontWeight: '900', color: C.crema, letterSpacing: -1 },
-  loginSub: { fontSize: 11, color: C.oro, letterSpacing: 4, marginTop: 2 },
+  loginHeader: { backgroundColor: '#8B1A1A', paddingTop: 60, paddingBottom: 28, alignItems: 'center', overflow: 'hidden' },
+  loginLogo: { fontFamily: FONT_TITOLO, fontSize: 42, fontWeight: '900', color: C.crema, letterSpacing: -1, textShadow: '0 2px 14px rgba(0,0,0,0.35)' },
+  loginSub: { fontFamily: FONT_TESTO, fontSize: 11, color: 'rgba(242,232,213,0.7)', letterSpacing: 4, marginTop: 4, fontWeight: '600' },
   loginBody: { flex: 1, padding: 24 },
   loginBodyContent: { alignItems: 'center', justifyContent: 'center', flexGrow: 1 },
   loginEmoji: { fontSize: 64, marginBottom: 16 },
-  loginTitle: { fontSize: 26, fontWeight: '900', color: C.marrone, marginBottom: 8 },
-  loginDesc: { fontSize: 14, color: C.grigio, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
+  loginTitle: { fontFamily: FONT_TITOLO, fontSize: 28, fontWeight: '900', color: C.marrone, marginBottom: 8 },
+  loginDesc: { fontFamily: FONT_TESTO, fontSize: 14, color: C.grigio, textAlign: 'center', marginBottom: 24, lineHeight: 20 },
   loginBox: { width: '100%', gap: 12 },
   heroBanner: { backgroundColor: C.marrone, borderRadius: 20, padding: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   heroGreeting: { fontSize: 13, color: 'rgba(242,232,213,0.7)', fontStyle: 'italic' },
@@ -1710,7 +2084,7 @@ const S = StyleSheet.create({
   catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
   catPillText: { fontSize: 11, color: C.grigio, fontWeight: '600' },
   catPillTextActive: { color: 'white' },
-  card: { flexDirection: 'row', backgroundColor: 'white', borderRadius: 16, marginBottom: 10, overflow: 'hidden' },
+  card: { flexDirection: 'row', backgroundColor: '#FFFCF6', borderRadius: 16, marginBottom: 10, overflow: 'hidden' },
   cardLeft: { width: 60, backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   cardEmoji: { fontSize: 28 },
   cardBody: { flex: 1, padding: 14 },
@@ -1727,7 +2101,7 @@ const S = StyleSheet.create({
   qtyPlus: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.rosso, alignItems: 'center', justifyContent: 'center' },
   qtyPlusText: { fontSize: 16, fontWeight: '700', color: 'white' },
   formBox: { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 },
-  formLabel: { fontSize: 11, color: C.grigio, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8 },
+  formLabel: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, fontWeight: '700' },
   typeBtn: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.cremaScuro, gap: 4 },
   typeBtnActive: { backgroundColor: C.rosso },
   typeBtnText: { color: C.marrone, fontWeight: '700', fontSize: 13 },
@@ -1752,8 +2126,8 @@ const S = StyleSheet.create({
   totalCard: { backgroundColor: 'white', borderRadius: 16, padding: 18, marginBottom: 14 },
   totalRow: { fontSize: 13, color: C.grigio },
   totalBig: { fontSize: 18, fontWeight: '800', color: C.marrone },
-  checkoutBtn: { backgroundColor: C.rosso, borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 30 },
-  checkoutText: { color: 'white', fontSize: 16, fontWeight: '800' },
+  checkoutBtn: { backgroundColor: '#8B1A1A', background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 30, boxShadow: '0 8px 22px rgba(140,20,20,0.35)' },
+  checkoutText: { fontFamily: FONT_TESTO, color: 'white', fontSize: 16, fontWeight: '800' },
   offerCard: { borderRadius: 20, padding: 22, marginBottom: 14 },
   offerTitle: { fontSize: 22, fontWeight: '800', color: C.crema },
   offerDesc: { fontSize: 12, color: 'rgba(242,232,213,0.75)', marginTop: 3 },
@@ -1762,9 +2136,10 @@ const S = StyleSheet.create({
   offerBtn: { backgroundColor: C.crema, borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 14 },
   offerBtnText: { fontWeight: '800', color: C.marrone, fontSize: 13 },
   errore: { color: C.rosso, textAlign: 'center', marginBottom: 12, fontWeight: '700' },
-  navbar: { backgroundColor: C.marrone, flexDirection: 'row', paddingBottom: 12, paddingTop: 6, borderTopWidth: 3, borderTopColor: C.rosso },
-  navBtn: { flex: 1, alignItems: 'center', gap: 2 },
-  navLabel: { fontSize: 9, color: 'rgba(242,232,213,0.35)', letterSpacing: 0.5, fontWeight: '600' },
-  navLabelOn: { color: C.oro },
-  navDot: { width: 4, height: 4, borderRadius: 2, backgroundColor: C.oro, marginTop: 2 },
+  navbar: { flexDirection: 'row', paddingBottom: 14, paddingTop: 10, backgroundColor: '#F7EFDF', borderTopWidth: 1, borderTopColor: C.cremaScuro, justifyContent: 'space-around' },
+  navBtn: { alignItems: 'center', gap: 3 },
+  navIcon: { width: 44, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  navIconOn: { background: 'linear-gradient(135deg, #E8B84B, #C8961E)', boxShadow: '0 4px 12px rgba(200,150,30,0.4)' },
+  navLabel: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, fontWeight: '600' },
+  navLabelOn: { color: C.rosso, fontWeight: '700' },
 });

@@ -184,6 +184,16 @@ const isPizzaCombo = (id) => id >= 1 && id <= 66;       // tutte le pizze
 const isDolceCombo = (id) => id >= 102 && id <= 113;    // dolci
 const isBibitaCombo = (id) => id >= 114 && id <= 122;   // bibite analcoliche (no birre/spritz)
 
+// Stato ordine: etichetta e colore per il cliente
+const STATO_INFO = {
+  nuovo: { label: 'In attesa di conferma', colore: '#8B7355', step: 0 },
+  in_lavorazione: { label: 'Accettato, in preparazione', colore: '#C8961E', step: 1 },
+  pronto: { label: 'In consegna', colore: '#2C5A2E', step: 2 },
+  consegnato: { label: 'Consegnato', colore: '#2C5A2E', step: 3 },
+  rifiutato: { label: 'Rifiutato', colore: '#8B1A1A', step: -1 },
+};
+const STATO_STEPS = ['nuovo', 'in_lavorazione', 'pronto', 'consegnato'];
+
 const ORARI_SERA_FULL = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
 const ORARI_PRANZO_FULL = ['12:30', '13:00', '13:30', '14:00'];
 const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:00-22:45)'];
@@ -239,6 +249,10 @@ const getCalendario = () => {
 function LoginScreen({ onLogin }) {
   const [tel, setTel] = useState('');
   const [nome, setNome] = useState('');
+  const [cognome, setCognome] = useState('');
+  const [email, setEmail] = useState('');
+  const [indirizzo, setIndirizzo] = useState('');
+  const [allergie, setAllergie] = useState('');
   const [step, setStep] = useState(1);
   const [errore, setErrore] = useState('');
   const [loading, setLoading] = useState(false);
@@ -250,7 +264,7 @@ function LoginScreen({ onLogin }) {
     const { data } = await supabase.from('clienti').select('*').eq('telefono', clean).single();
     setLoading(false);
     if (data) {
-      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '' });
+      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '', premio: data.premio_attivo || '' });
     } else {
       setStep(2);
       setErrore('');
@@ -259,11 +273,22 @@ function LoginScreen({ onLogin }) {
 
   const registra = async () => {
     if (!nome.trim()) { setErrore('Inserisci il tuo nome'); return; }
+    if (!cognome.trim()) { setErrore('Inserisci il tuo cognome'); return; }
     const clean = tel.replace(/\s/g, '');
     setLoading(true);
-    await supabase.from('clienti').insert([{ telefono: clean, nome: nome.trim() }]);
+    const datiCliente = {
+      telefono: clean,
+      nome: nome.trim(),
+      cognome: cognome.trim(),
+      email: email.trim(),
+      indirizzo: indirizzo.trim(),
+      pagamento: 'contanti',
+      allergie: allergie.trim(),
+    };
+    const { error } = await supabase.from('clienti').insert([datiCliente]);
     setLoading(false);
-    onLogin({ telefono: clean, nome: nome.trim(), cognome: '', indirizzo: '', pagamento: 'contanti', allergie: '' });
+    if (error) { setErrore('Errore: ' + error.message); return; }
+    onLogin(datiCliente);
   };
 
   return (
@@ -273,11 +298,11 @@ function LoginScreen({ onLogin }) {
         <Text style={S.loginLogo}>Pizzicata</Text>
         <Text style={S.loginSub}>- TORINO -</Text>
       </View>
-      <View style={S.loginBody}>
+      <ScrollView style={S.loginBody} contentContainerStyle={S.loginBodyContent} showsVerticalScrollIndicator={false}>
         <Text style={S.loginEmoji}>🍕</Text>
         <Text style={S.loginTitle}>Benvenuto!</Text>
         <Text style={S.loginDesc}>
-          {step === 1 ? 'Inserisci il tuo numero di telefono per ordinare' : 'Prima volta? Inserisci il tuo nome'}
+          {step === 1 ? 'Inserisci il tuo numero di telefono per ordinare' : 'Prima volta? Completa i tuoi dati'}
         </Text>
         {step === 1 ? (
           <View style={S.loginBox}>
@@ -296,30 +321,37 @@ function LoginScreen({ onLogin }) {
           </View>
         ) : (
           <View style={S.loginBox}>
-            <Text style={S.formLabel}>COME TI CHIAMI?</Text>
-            <input
-              style={inputStyle}
-              placeholder="Mario Rossi"
-              value={nome}
-              onChange={(e) => setNome(e.target.value)}
-            />
+            <Text style={S.formLabel}>NOME *</Text>
+            <input style={inputStyle} placeholder="Mario" value={nome} onChange={(e) => setNome(e.target.value)} />
+            <View style={{ height: 12 }} />
+            <Text style={S.formLabel}>COGNOME *</Text>
+            <input style={inputStyle} placeholder="Rossi" value={cognome} onChange={(e) => setCognome(e.target.value)} />
+            <View style={{ height: 12 }} />
+            <Text style={S.formLabel}>EMAIL</Text>
+            <input style={inputStyle} placeholder="mario.rossi@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+            <View style={{ height: 12 }} />
+            <Text style={S.formLabel}>INDIRIZZO</Text>
+            <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
+            <View style={{ height: 12 }} />
+            <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE (se presenti)</Text>
+            <input style={inputStyle} placeholder="Es. glutine, lattosio..." value={allergie} onChange={(e) => setAllergie(e.target.value)} />
             {errore ? <Text style={S.errore}>{errore}</Text> : null}
             <TouchableOpacity style={S.checkoutBtn} onPress={registra}>
-              <Text style={S.checkoutText}>{loading ? 'Registrazione...' : 'Accedi'}</Text>
+              <Text style={S.checkoutText}>{loading ? 'Registrazione...' : 'Crea account'}</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12, alignItems: 'center' }}>
+            <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12, alignItems: 'center', marginBottom: 30 }}>
               <Text style={{ color: C.grigio, fontSize: 13 }}>Indietro</Text>
             </TouchableOpacity>
           </View>
         )}
-      </View>
+      </ScrollView>
     </View>
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
   const [pagamento, setPagamento] = useState(utente.pagamento || 'contanti');
   const [giornoSelezionato, setGiornoSelezionato] = useState(0);
@@ -347,13 +379,8 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, combo
 
   const doOrder = () => {
     if (combo) {
-      const np = cart.filter(c => isPizzaCombo(c.id)).reduce((s, c) => s + c.qty, 0);
-      const nd = cart.filter(c => isDolceCombo(c.id)).reduce((s, c) => s + c.qty, 0);
-      const nb = cart.filter(c => isBibitaCombo(c.id)).reduce((s, c) => s + c.qty, 0);
-      if (np < combo.pizze || nd < combo.dolci || nb < combo.bibite) {
-        setErrore(`Combo incompleta: servono ${combo.pizze} pizze (${np}), ${combo.dolci} dolci (${nd}), ${combo.bibite} bibite (${nb}).`);
-        return;
-      }
+      setErrore('Hai una Combo Famiglia non confermata. Completala e premi "Conferma combo", oppure annullala dal menù.');
+      return;
     }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
     setErrore('');
@@ -516,6 +543,32 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, combo
             <textarea style={textareaStyle} placeholder="Allergie, intolleranze, richieste speciali..." value={note} onChange={(e) => setNote(e.target.value)} />
           </View>
 
+          {/* Bibita omaggio premio ruota */}
+          {utente.premio === 'bibita' && (
+            <View style={{ backgroundColor: '#FFF8E8', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 2, borderColor: C.oro }}>
+              <Text style={{ fontSize: 15, fontWeight: '800', color: C.marrone, marginBottom: 4 }}>🥤 Hai una bibita in omaggio!</Text>
+              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 10 }}>Premio della ruota. Scegli quale bibita vuoi gratis (le altre le paghi normalmente).</Text>
+              {(() => {
+                const bibiteCarrello = cart.filter(c => isBibitaCombo(c.id));
+                if (bibiteCarrello.length === 0) {
+                  return <Text style={{ fontSize: 13, color: C.rosso }}>Aggiungi una bibita dal menù per usare l'omaggio.</Text>;
+                }
+                return (
+                  <select
+                    value={bibitaOmaggioId || ''}
+                    onChange={(e) => setBibitaOmaggioId(e.target.value ? Number(e.target.value) : null)}
+                    style={{ ...inputStyle, height: 44 }}
+                  >
+                    <option value="">— Scegli la bibita omaggio —</option>
+                    {bibiteCarrello.map(b => (
+                      <option key={b.id} value={b.id}>{b.name} (€ {b.price.toFixed(2)})</option>
+                    ))}
+                  </select>
+                );
+              })()}
+            </View>
+          )}
+
           {errore ? <Text style={S.errore}>{errore}</Text> : null}
 
           <View style={S.totalCard}>
@@ -523,10 +576,16 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, combo
               <Text style={S.totalRow}>Subtotale</Text>
               <Text style={S.totalRow}>€ {cartTotalRaw.toFixed(2)}</Text>
             </View>
-            {combo && scontoCombo > 0 && (
+            {scontoCombo > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                 <Text style={[S.totalRow, { color: '#2C5A2E' }]}>🎁 Bibite combo omaggio</Text>
                 <Text style={[S.totalRow, { color: '#2C5A2E' }]}>− € {scontoCombo.toFixed(2)}</Text>
+              </View>
+            )}
+            {scontoPremio > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>🎡 {premioLabel}</Text>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>− € {scontoPremio.toFixed(2)}</Text>
               </View>
             )}
             {tipoOrdine === 'domicilio' && (
@@ -563,6 +622,98 @@ const textareaStyle = {
   backgroundColor: 'white', boxSizing: 'border-box',
 };
 
+// RUOTA DELLA FORTUNA (componente esterno e stabile)
+function RuotaFortuna({ girando, premio, rotazione, onGira, onChiudi }) {
+  const N = 6;
+  const gradiPerSpicchio = 360 / N;
+  const spicchi = [
+    { val: 'bibita', colore: '#C8961E' },
+    { val: 'sconto10', colore: '#8B1A1A' },
+    { val: 'bibita', colore: '#2C5A2E' },
+    { val: 'sconto10', colore: '#C8961E' },
+    { val: 'bibita', colore: '#8B1A1A' },
+    { val: 'sconto10', colore: '#2C5A2E' },
+  ];
+  const conic = spicchi
+    .map((s, i) => `${s.colore} ${i * gradiPerSpicchio}deg ${(i + 1) * gradiPerSpicchio}deg`)
+    .join(', ');
+
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+      zIndex: 99999, padding: 20,
+    }}>
+      <div style={{ fontSize: 26, fontWeight: 900, color: '#F2E8D5', marginBottom: 4, textAlign: 'center' }}>Ruota della Fortuna!</div>
+      <div style={{ fontSize: 14, color: 'rgba(242,232,213,0.85)', marginBottom: 24, textAlign: 'center' }}>
+        {premio ? 'Complimenti!' : 'Hai speso piu di 15 euro: gira e vinci!'}
+      </div>
+
+      <div style={{ position: 'relative', width: 280, height: 300 }}>
+        <div style={{
+          position: 'absolute', top: 4, left: '50%', transform: 'translateX(-50%)',
+          width: 0, height: 0, borderLeft: '15px solid transparent', borderRight: '15px solid transparent',
+          borderTop: '26px solid #fff', zIndex: 5, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.5))',
+        }} />
+        <div style={{
+          position: 'absolute', top: 20, left: '50%', marginLeft: -130,
+          width: 260, height: 260, borderRadius: '50%',
+          background: `conic-gradient(${conic})`,
+          border: '8px solid #C8961E', boxSizing: 'border-box',
+          boxShadow: '0 0 30px rgba(200,150,30,0.5)',
+          transform: `rotate(${rotazione}deg)`,
+          transition: 'transform 4.2s cubic-bezier(0.15, 0.7, 0.1, 1)',
+        }}>
+          {spicchi.map((s, i) => {
+            const centro = i * gradiPerSpicchio + gradiPerSpicchio / 2;
+            return (
+              <div key={i} style={{
+                position: 'absolute', top: '50%', left: '50%', width: 0, height: 0,
+                transform: `rotate(${centro}deg) translateY(-85px)`,
+              }}>
+                <div style={{
+                  transform: 'translate(-50%, -50%)',
+                  color: 'white', fontSize: 12, fontWeight: 800, textAlign: 'center',
+                  lineHeight: 1.15, width: 64, textShadow: '0 1px 2px rgba(0,0,0,0.7)',
+                }}>
+                  {s.val === 'bibita' ? <><div>Bibita</div><div>omaggio</div></> : <><div>Sconto</div><div>10%</div></>}
+                </div>
+              </div>
+            );
+          })}
+          <div style={{ position: 'absolute', top: '50%', left: '50%', width: 22, height: 22, marginTop: -11, marginLeft: -11, background: '#fff', borderRadius: '50%', border: '3px solid #C8961E', zIndex: 2 }} />
+        </div>
+      </div>
+
+      {!premio ? (
+        <button onClick={onGira} disabled={girando} style={{
+          background: girando ? '#8B7355' : '#C8961E', color: '#3D1A00', fontWeight: 900, fontSize: 18,
+          border: 'none', borderRadius: 16, padding: '16px 50px', marginTop: 24,
+          cursor: girando ? 'default' : 'pointer', fontFamily: 'inherit',
+        }}>
+          {girando ? 'Gira...' : 'GIRA!'}
+        </button>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: 24 }}>
+          <div style={{ background: 'white', borderRadius: 16, padding: 20, textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 40 }}>{premio === 'bibita' ? '🥤' : '🎟️'}</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#3D1A00', marginTop: 8 }}>
+              {premio === 'bibita' ? 'Bibita in omaggio!' : 'Sconto 10%!'}
+            </div>
+            <div style={{ fontSize: 13, color: '#8B7355', marginTop: 4 }}>Lo userai al tuo prossimo ordine</div>
+          </div>
+          <button onClick={onChiudi} style={{
+            background: '#8B1A1A', color: 'white', fontWeight: 800, fontSize: 16,
+            border: 'none', borderRadius: 16, padding: '14px 40px', cursor: 'pointer', fontFamily: 'inherit',
+          }}>
+            Fantastico!
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [utente, setUtenteRaw] = useState(() => {
     try {
@@ -582,7 +733,43 @@ export default function App() {
   const [cart, setCart] = useState([]);
   const [ordered, setOrdered] = useState(false);
   const [ora, setOra] = useState(new Date());
-  const [combo, setCombo] = useState(null); // null o { tipo:'famiglia', pizze:4, dolci:4, bibite:4 }
+  const [combo, setCombo] = useState(null); // combo in corso di composizione: null o { pizze:4, dolci:4, bibite:4 }
+  const [combosConfermate, setCombosConfermate] = useState(0); // quante combo già confermate (4 bibite gratis ciascuna)
+  const [bibitaOmaggioId, setBibitaOmaggioId] = useState(null); // bibita scelta come omaggio premio ruota
+  const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
+  const [ruotaGirando, setRuotaGirando] = useState(false);
+  const [ruotaPremio, setRuotaPremio] = useState(null);
+  const [ruotaRotazione, setRuotaRotazione] = useState(0);
+
+  const giraRuota = () => {
+    if (ruotaGirando || ruotaPremio) return;
+    setRuotaGirando(true);
+    const N = 6;
+    const gradiPerSpicchio = 360 / N;
+    // spicchi: 0,2,4 = bibita ; 1,3,5 = sconto10
+    const vincente = Math.random() < 0.5 ? 'bibita' : 'sconto10';
+    const indiciValidi = vincente === 'bibita' ? [0, 2, 4] : [1, 3, 5];
+    const idx = indiciValidi[Math.floor(Math.random() * indiciValidi.length)];
+    const centroSpicchio = idx * gradiPerSpicchio + gradiPerSpicchio / 2;
+    const target = 6 * 360 + (360 - centroSpicchio);
+    setRuotaRotazione(target);
+    setTimeout(() => {
+      setRuotaPremio(vincente);
+      setRuotaGirando(false);
+      try { supabase.from('clienti').update({ premio_attivo: vincente }).eq('telefono', utente.telefono); } catch (e) {}
+      setUtente({ ...utente, premio: vincente });
+    }, 4300);
+  };
+
+  const chiudiRuota = () => {
+    setRuotaVisibile(false);
+    setRuotaGirando(false);
+    setRuotaPremio(null);
+    setRuotaRotazione(0);
+    setCart([]);
+    setOrdered(false);
+    setTab('home');
+  };
 
   useEffect(() => {
     const t = setInterval(() => setOra(new Date()), 60000);
@@ -591,11 +778,27 @@ export default function App() {
 
   if (!utente) return <LoginScreen onLogin={setUtente} />;
 
-  const add = (item) => setCart(prev => {
-    const ex = prev.find(c => c.id === item.id);
-    if (ex) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
-    return [...prev, { ...item, qty: 1 }];
-  });
+  const add = (item) => {
+    // Durante una combo in corso: tetto = quanto già confermato + 4
+    if (combo) {
+      const tot = (pred) => cart.filter(c => pred(c.id)).reduce((s, c) => s + c.qty, 0);
+      const base = combosConfermate * 4; // già confermati (liberi)
+      if (isPizzaCombo(item.id) && tot(isPizzaCombo) >= base + combo.pizze) { alert('Hai già 4 pizze in questa combo. Conferma la combo per aggiungere altro.'); return; }
+      if (isDolceCombo(item.id) && tot(isDolceCombo) >= base + combo.dolci) { alert('Hai già 4 dolci in questa combo. Conferma la combo per aggiungere altro.'); return; }
+      if (isBibitaCombo(item.id) && tot(isBibitaCombo) >= base + combo.bibite) { alert('Hai già 4 bibite in questa combo. Conferma la combo per aggiungere altro.'); return; }
+    }
+    setCart(prev => {
+      const ex = prev.find(c => c.id === item.id);
+      if (ex) return prev.map(c => c.id === item.id ? { ...c, qty: c.qty + 1 } : c);
+      return [...prev, { ...item, qty: 1 }];
+    });
+  };
+
+  // Conferma la combo in corso: la blocca e permette di aggiungere altro / aprire nuove combo
+  const confermaCombo = () => {
+    setCombosConfermate(n => n + 1);
+    setCombo(null);
+  };
 
   const remove = (id) => setCart(prev =>
     prev.map(c => c.id === id ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0)
@@ -603,29 +806,63 @@ export default function App() {
 
   const cartN = cart.reduce((s, i) => s + i.qty, 0);
   const cartTotalRaw = cart.reduce((s, i) => s + i.price * i.qty, 0);
-  // Sconto combo: le prime 4 bibite analcoliche sono gratis
+  // Sconto combo: 4 bibite gratis per OGNI combo confermata
+  const bibiteGratisTotali = combosConfermate * 4;
   let scontoCombo = 0;
-  if (combo) {
-    let bibiteGratis = 0;
+  if (bibiteGratisTotali > 0) {
+    let contate = 0;
+    // sconta le bibite più economiche per prime? No: ordine naturale, prime N bibite gratis
     for (const c of cart) {
       if (isBibitaCombo(c.id)) {
         for (let k = 0; k < c.qty; k++) {
-          if (bibiteGratis < combo.bibite) { scontoCombo += c.price; bibiteGratis++; }
+          if (contate < bibiteGratisTotali) { scontoCombo += c.price; contate++; }
         }
       }
     }
   }
-  const cartTotal = Math.max(0, cartTotalRaw - scontoCombo);
+  const cartTotalDopoCombo = Math.max(0, cartTotalRaw - scontoCombo);
+  // Premio attivo dal giro ruota precedente
+  let scontoPremio = 0;
+  let premioLabel = '';
+  if (utente.premio === 'sconto10' && cartTotalDopoCombo > 0) {
+    scontoPremio = cartTotalDopoCombo * 0.10;
+    premioLabel = 'Sconto 10% (premio ruota)';
+  } else if (utente.premio === 'bibita' && bibitaOmaggioId) {
+    // sconta la bibita scelta dal cliente (una unità)
+    const bevandaScelta = Object.values(MENU).flat().find(p => p.id === bibitaOmaggioId);
+    const nelCarrello = cart.find(c => c.id === bibitaOmaggioId);
+    if (bevandaScelta && nelCarrello) {
+      scontoPremio = bevandaScelta.price;
+      premioLabel = 'Bibita omaggio (premio ruota)';
+    }
+  }
+  const cartTotal = Math.max(0, cartTotalDopoCombo - scontoPremio);
 
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
     const spedizione = tipoOrdine === 'domicilio' ? 2.5 : 0;
+    // Costruisce un riepilogo dettagliato per la cucina
+    const nomeBibitaOmaggio = bibitaOmaggioId ? (Object.values(MENU).flat().find(p => p.id === bibitaOmaggioId)?.name || '') : '';
+    const righeRiepilogo = [];
+    righeRiepilogo.push(`Subtotale: € ${cartTotalRaw.toFixed(2)}`);
+    if (scontoCombo > 0) righeRiepilogo.push(`Sconto combo (bibite omaggio): -€ ${scontoCombo.toFixed(2)}`);
+    if (scontoPremio > 0 && utente.premio === 'sconto10') righeRiepilogo.push(`Sconto 10% (premio ruota): -€ ${scontoPremio.toFixed(2)}`);
+    if (scontoPremio > 0 && utente.premio === 'bibita') righeRiepilogo.push(`Bibita OMAGGIO (premio ruota): ${nomeBibitaOmaggio} -€ ${scontoPremio.toFixed(2)}`);
+    if (spedizione > 0) righeRiepilogo.push(`Consegna a domicilio: +€ ${spedizione.toFixed(2)}`);
+    if (combosConfermate > 0) righeRiepilogo.push(`${combosConfermate}x COMBO FAMIGLIA (4 pizze + 4 dolci + 4 bibite omaggio ciascuna)`);
+    const noteCliente = (note || '').trim();
+    const noteComplete = [
+      noteCliente ? `NOTE CLIENTE: ${noteCliente}` : '',
+      '--- RIEPILOGO ---',
+      ...righeRiepilogo,
+    ].filter(Boolean).join('\n');
+
     const { error } = await supabase.from('ordini').insert([{
       cliente: utente.nome,
       telefono: utente.telefono,
       items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price }))),
       totale: cartTotal + spedizione,
       stato: 'nuovo',
-      note: combo ? ('🎁 COMBO FAMIGLIA (4 pizze + 4 dolci + 4 bibite omaggio) ' + (note || '')).trim() : note,
+      note: noteComplete,
       indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
       tipo: tipoOrdine,
       orario_consegna: giorno + ' - ' + orario,
@@ -638,8 +875,22 @@ export default function App() {
     if (indirizzo && utente.indirizzo !== indirizzo) {
       await supabase.from('clienti').update({ indirizzo }).eq('telefono', utente.telefono);
     }
+    // premioInSospeso = il cliente aveva già un premio non ancora usato (prima di questo ordine)
+    const premioInSospeso = !!utente.premio;
+    // Se questo ordine ha consumato un premio, azzeralo nel DB
+    if (premioInSospeso) {
+      await supabase.from('clienti').update({ premio_attivo: '' }).eq('telefono', utente.telefono);
+      setUtente({ ...utente, premio: '', indirizzo: indirizzo || utente.indirizzo });
+    }
+    const totaleOrdine = cartTotal + spedizione;
     setCombo(null);
+    setCombosConfermate(0);
+    setBibitaOmaggioId(null);
     setOrdered(true);
+    // Ruota: ordine >=15€ e nessun premio era già in sospeso, e non ne ha appena vinto uno
+    if (totaleOrdine >= 15 && !premioInSospeso) {
+      setTimeout(() => setRuotaVisibile(true), 800);
+    }
   };
 
   const oraStr = ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
@@ -711,19 +962,51 @@ export default function App() {
           <Text style={S.tileVal}>331 5695959{'\n'}011 0362310</Text>
         </TouchableOpacity>
       </View>
+
+      <Text style={S.secLabel}>SEGUICI</Text>
+      <View style={{ flexDirection: 'row', gap: 12, marginBottom: 24 }}>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: '#E1306C', borderRadius: 16, padding: 16, alignItems: 'center' }}
+          activeOpacity={0.8}
+          onPress={() => window.open('https://www.instagram.com/pizzicata_pizzeria', '_blank')}
+        >
+          <Text style={{ fontSize: 28 }}>📷</Text>
+          <Text style={{ color: 'white', fontWeight: '800', fontSize: 14, marginTop: 4 }}>Instagram</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>@pizzicata_pizzeria</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={{ flex: 1, backgroundColor: '#000000', borderRadius: 16, padding: 16, alignItems: 'center' }}
+          activeOpacity={0.8}
+          onPress={() => window.open('https://www.tiktok.com/@pizzicatapizzeria', '_blank')}
+        >
+          <Text style={{ fontSize: 28 }}>🎵</Text>
+          <Text style={{ color: 'white', fontWeight: '800', fontSize: 14, marginTop: 4 }}>TikTok</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, marginTop: 2 }}>@pizzicatapizzeria</Text>
+        </TouchableOpacity>
+      </View>
     </ScrollView>
   );
 
   const Menu = () => {
-    const comboPizze = combo ? cart.filter(c => isPizzaCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
-    const comboDolci = combo ? cart.filter(c => isDolceCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
-    const comboBibite = combo ? cart.filter(c => isBibitaCombo(c.id)).reduce((s, c) => s + c.qty, 0) : 0;
+    const base = combosConfermate * 4;
+    const comboPizze = combo ? Math.max(0, cart.filter(c => isPizzaCombo(c.id)).reduce((s, c) => s + c.qty, 0) - base) : 0;
+    const comboDolci = combo ? Math.max(0, cart.filter(c => isDolceCombo(c.id)).reduce((s, c) => s + c.qty, 0) - base) : 0;
+    const comboBibite = combo ? Math.max(0, cart.filter(c => isBibitaCombo(c.id)).reduce((s, c) => s + c.qty, 0) - base) : 0;
+    const comboCompleta = combo && comboPizze >= combo.pizze && comboDolci >= combo.dolci && comboBibite >= combo.bibite;
     return (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      {combosConfermate > 0 && !combo && (
+        <View style={{ backgroundColor: '#2C5A2E', borderRadius: 12, padding: 12, marginBottom: 12, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Text style={{ color: 'white', fontWeight: '700', fontSize: 13 }}>✓ {combosConfermate} Combo Famiglia confermata{combosConfermate > 1 ? 'e' : ''}</Text>
+          <TouchableOpacity onPress={() => { setCombo({ pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); }}>
+            <Text style={{ color: C.oro, fontWeight: '800', fontSize: 13 }}>+ Altra combo</Text>
+          </TouchableOpacity>
+        </View>
+      )}
       {combo && (
         <View style={{ backgroundColor: C.marrone, borderRadius: 16, padding: 14, marginBottom: 12 }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-            <Text style={{ color: C.crema, fontWeight: '800', fontSize: 15 }}>🎁 Combo Famiglia</Text>
+            <Text style={{ color: C.crema, fontWeight: '800', fontSize: 15 }}>🎁 Combo Famiglia {combosConfermate > 0 ? `#${combosConfermate + 1}` : ''}</Text>
             <TouchableOpacity onPress={() => setCombo(null)}>
               <Text style={{ color: 'rgba(242,232,213,0.6)', fontSize: 12 }}>Annulla ✕</Text>
             </TouchableOpacity>
@@ -742,11 +1025,15 @@ export default function App() {
               <Text style={{ color: 'white', fontWeight: '800', fontSize: 16 }}>{comboBibite}/{combo.bibite}</Text>
             </View>
           </View>
-          <Text style={{ color: 'rgba(242,232,213,0.7)', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
-            {comboPizze >= combo.pizze && comboDolci >= combo.dolci && comboBibite >= combo.bibite
-              ? '✓ Combo completa! Vai al carrello per ordinare.'
-              : 'Aggiungi i prodotti dal menù. Le bibite sono in omaggio!'}
-          </Text>
+          {comboCompleta ? (
+            <TouchableOpacity style={{ backgroundColor: C.oro, borderRadius: 10, padding: 12, alignItems: 'center', marginTop: 10 }} onPress={confermaCombo}>
+              <Text style={{ color: C.marrone, fontWeight: '800', fontSize: 14 }}>✓ Conferma combo</Text>
+            </TouchableOpacity>
+          ) : (
+            <Text style={{ color: 'rgba(242,232,213,0.7)', fontSize: 11, marginTop: 8, textAlign: 'center' }}>
+              Scegli 4 pizze, 4 dolci e 4 bibite. Le bibite sono in omaggio!
+            </Text>
+          )}
         </View>
       )}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.crema }}>
@@ -812,30 +1099,8 @@ export default function App() {
           <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OMAGGIO INCLUSO</Text>
           <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>4 bibite a scelta (escluse birre)</Text>
         </View>
-        <TouchableOpacity style={S.offerBtn} onPress={() => { setCombo({ tipo: 'famiglia', pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); setTab('menu'); }}>
+        <TouchableOpacity style={S.offerBtn} onPress={() => { setCombo({ pizze: 4, dolci: 4, bibite: 4 }); setCat('Pizze Rosse'); setTab('menu'); }}>
           <Text style={S.offerBtnText}>Inizia la combo</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={[S.offerCard, { backgroundColor: C.marrone }]}>
-        <Text style={S.offerTitle}>Lunch Express</Text>
-        <Text style={S.offerDesc}>Pizza + bibita a pranzo ogni giorno</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: 10, marginTop: 10 }}>
-          <Text style={S.offerPrice}>€ 9,50</Text>
-          <Text style={S.offerOld}>€ 13,00</Text>
-        </View>
-        <TouchableOpacity style={S.offerBtn} onPress={() => setTab('menu')}>
-          <Text style={S.offerBtnText}>Ordina ora</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={[S.offerCard, { backgroundColor: '#2C5A2E' }]}>
-        <Text style={S.offerTitle}>Pane Fresco</Text>
-        <Text style={S.offerDesc}>Filoni artigianali dal forno a legna</Text>
-        <View style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderRadius: 12, padding: 12, marginTop: 12 }}>
-          <Text style={{ color: C.oro, fontWeight: '800', fontSize: 14 }}>OGNI MATTINA</Text>
-          <Text style={{ color: 'white', fontSize: 13, marginTop: 4 }}>Prenota il tuo filone fresco!</Text>
-        </View>
-        <TouchableOpacity style={S.offerBtn} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
-          <Text style={S.offerBtnText}>Prenota ora</Text>
         </TouchableOpacity>
       </View>
     </ScrollView>
@@ -844,6 +1109,7 @@ export default function App() {
   const Profilo = () => {
     const [pNome, setPNome] = useState(utente.nome || '');
     const [pCognome, setPCognome] = useState(utente.cognome || '');
+    const [pEmail, setPEmail] = useState(utente.email || '');
     const [pIndirizzo, setPIndirizzo] = useState(utente.indirizzo || '');
     const [pPagamento, setPPagamento] = useState(utente.pagamento || 'contanti');
     const [pAllergie, setPAllergie] = useState(utente.allergie || '');
@@ -855,13 +1121,14 @@ export default function App() {
       const { error } = await supabase.from('clienti').update({
         nome: pNome.trim(),
         cognome: pCognome.trim(),
+        email: pEmail.trim(),
         indirizzo: pIndirizzo.trim(),
         pagamento: pPagamento,
         allergie: pAllergie.trim(),
       }).eq('telefono', utente.telefono);
       setSalvando(false);
       if (error) { alert('Errore: ' + error.message); return; }
-      setUtente({ ...utente, nome: pNome.trim(), cognome: pCognome.trim(), indirizzo: pIndirizzo.trim(), pagamento: pPagamento, allergie: pAllergie.trim() });
+      setUtente({ ...utente, nome: pNome.trim(), cognome: pCognome.trim(), email: pEmail.trim(), indirizzo: pIndirizzo.trim(), pagamento: pPagamento, allergie: pAllergie.trim() });
       setSalvato(true);
       setTimeout(() => setSalvato(false), 2000);
     };
@@ -876,6 +1143,27 @@ export default function App() {
         <Text style={{ fontSize: 24, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>Il tuo profilo</Text>
         <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 20 }}>I tuoi dati vengono salvati per i prossimi ordini.</Text>
 
+        {utente.premio ? (
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() => setTab('menu')}
+            style={{ backgroundColor: utente.premio === 'bibita' ? '#C8961E' : '#8B1A1A', borderRadius: 18, padding: 20, marginBottom: 20, flexDirection: 'row', alignItems: 'center', gap: 14, boxShadow: '0 4px 16px rgba(200,150,30,0.35)' }}
+          >
+            <Text style={{ fontSize: 44 }}>{utente.premio === 'bibita' ? '🥤' : '🎟️'}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: 'white', fontWeight: '900', fontSize: 17 }}>
+                🎉 Hai un premio che ti aspetta!
+              </Text>
+              <Text style={{ color: 'rgba(255,255,255,0.95)', fontSize: 14, marginTop: 4 }}>
+                {utente.premio === 'bibita' ? 'Una bibita in OMAGGIO sul prossimo ordine' : 'SCONTO 10% sul prossimo ordine'}
+              </Text>
+              <Text style={{ color: 'white', fontSize: 13, fontWeight: '800', marginTop: 8 }}>
+                Ordina ora per usarlo →
+              </Text>
+            </View>
+          </TouchableOpacity>
+        ) : null}
+
         <View style={S.formBox}>
           <Text style={S.formLabel}>NOME</Text>
           <input style={inputStyleP} value={pNome} onChange={(e) => setPNome(e.target.value)} placeholder="Nome" />
@@ -883,6 +1171,10 @@ export default function App() {
         <View style={S.formBox}>
           <Text style={S.formLabel}>COGNOME</Text>
           <input style={inputStyleP} value={pCognome} onChange={(e) => setPCognome(e.target.value)} placeholder="Cognome" />
+        </View>
+        <View style={S.formBox}>
+          <Text style={S.formLabel}>EMAIL</Text>
+          <input style={inputStyleP} value={pEmail} onChange={(e) => setPEmail(e.target.value)} placeholder="email@esempio.com" type="email" />
         </View>
         <View style={S.formBox}>
           <Text style={S.formLabel}>INDIRIZZO</Text>
@@ -912,17 +1204,146 @@ export default function App() {
     );
   };
 
+  const Ordini = () => {
+    const [ordini, setOrdini] = useState(null);
+    const [caricando, setCaricando] = useState(true);
+
+    const caricaOrdini = async () => {
+      const { data, error } = await supabase
+        .from('ordini')
+        .select('*')
+        .eq('telefono', utente.telefono)
+        .order('created_at', { ascending: false });
+      if (!error) setOrdini(data || []);
+      setCaricando(false);
+    };
+
+    useEffect(() => {
+      caricaOrdini();
+      const t = setInterval(caricaOrdini, 20000); // aggiorna stato ogni 20s
+      return () => clearInterval(t);
+    }, []);
+
+    const riordina = (ordine) => {
+      let items = [];
+      try { items = JSON.parse(ordine.items); } catch {}
+      if (!items.length) { alert('Impossibile riordinare questo ordine.'); return; }
+      // Ricostruisce il carrello cercando i prodotti nel MENU per id/nome
+      const nuovoCarrello = [];
+      const tuttiProdotti = Object.values(MENU).flat();
+      for (const it of items) {
+        const trovato = tuttiProdotti.find(p => p.name === it.name);
+        if (trovato) nuovoCarrello.push({ ...trovato, qty: it.qty || 1 });
+      }
+      if (!nuovoCarrello.length) { alert('I prodotti di questo ordine non sono più disponibili.'); return; }
+      setCombo(null);
+      setCart(nuovoCarrello);
+      setTab('cart');
+    };
+
+    const fmtData = (iso) => {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return d.toLocaleDateString('it-IT', { day: '2-digit', month: 'long', year: 'numeric' }) + ' alle ' + d.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
+    };
+
+    const attivi = (ordini || []).filter(o => o.stato !== 'consegnato' && o.stato !== 'rifiutato');
+    const storico = (ordini || []).filter(o => o.stato === 'consegnato' || o.stato === 'rifiutato');
+
+    return (
+      <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+        <Text style={{ fontSize: 24, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>I miei ordini</Text>
+        <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 20 }}>Segui lo stato e rivedi i tuoi ordini passati.</Text>
+
+        {caricando && <Text style={{ color: C.grigio, textAlign: 'center', marginTop: 20 }}>Caricamento...</Text>}
+
+        {!caricando && (ordini || []).length === 0 && (
+          <View style={{ alignItems: 'center', paddingTop: 40 }}>
+            <Text style={{ fontSize: 40 }}>🧾</Text>
+            <Text style={{ color: C.grigio, fontSize: 15, marginTop: 12, textAlign: 'center' }}>Non hai ancora fatto ordini.</Text>
+            <TouchableOpacity style={[S.checkoutBtn, { marginTop: 16, paddingHorizontal: 28 }]} onPress={() => setTab('menu')}>
+              <Text style={S.checkoutText}>Ordina ora</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {attivi.length > 0 && <Text style={S.secLabel}>IN CORSO</Text>}
+        {attivi.map(o => {
+          const info = STATO_INFO[o.stato] || STATO_INFO.nuovo;
+          let items = [];
+          try { items = JSON.parse(o.items); } catch {}
+          return (
+            <View key={o.id} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: info.colore }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+                <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: C.rosso }}>€ {Number(o.totale).toFixed(2)}</Text>
+              </View>
+              {/* Barra stato */}
+              {o.stato !== 'rifiutato' ? (
+                <View style={{ flexDirection: 'row', gap: 4, marginBottom: 8 }}>
+                  {STATO_STEPS.map((s, idx) => (
+                    <View key={s} style={{ flex: 1, height: 6, borderRadius: 3, backgroundColor: idx <= info.step ? info.colore : '#E8D5B0' }} />
+                  ))}
+                </View>
+              ) : null}
+              <Text style={{ fontSize: 15, fontWeight: '800', color: info.colore, marginBottom: 8 }}>{info.label}</Text>
+              <Text style={{ fontSize: 13, color: C.grigio }}>
+                {items.map(i => `${i.qty}× ${i.name}`).join(', ')}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.grigio, marginTop: 6 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''}</Text>
+            </View>
+          );
+        })}
+
+        {storico.length > 0 && <Text style={S.secLabel}>STORICO</Text>}
+        {storico.map(o => {
+          const info = STATO_INFO[o.stato] || STATO_INFO.consegnato;
+          let items = [];
+          try { items = JSON.parse(o.items); } catch {}
+          return (
+            <View key={o.id} style={{ backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 }}>
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
+                <Text style={{ fontSize: 13, fontWeight: '800', color: C.marrone }}>€ {Number(o.totale).toFixed(2)}</Text>
+              </View>
+              <Text style={{ fontSize: 12, fontWeight: '700', color: info.colore, marginBottom: 8 }}>{info.label}</Text>
+              <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 4 }}>
+                {items.map(i => `${i.qty}× ${i.name}`).join(', ')}
+              </Text>
+              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 12 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''} · {o.pagamento || ''}</Text>
+              <TouchableOpacity style={{ backgroundColor: C.rosso, borderRadius: 12, padding: 12, alignItems: 'center' }} onPress={() => riordina(o)}>
+                <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>🔄 Riordina</Text>
+              </TouchableOpacity>
+            </View>
+          );
+        })}
+        <View style={{ height: 24 }} />
+      </ScrollView>
+    );
+  };
+
+  // RUOTA DELLA FORTUNA
   const screens = {
     home: <Home />,
     menu: <Menu />,
-    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
+    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
     offers: <Offers />,
     profilo: <Profilo />,
+    ordini: <Ordini />,
   };
 
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.rosso} />
+      {ruotaVisibile && (
+        <RuotaFortuna
+          girando={ruotaGirando}
+          premio={ruotaPremio}
+          rotazione={ruotaRotazione}
+          onGira={giraRuota}
+          onChiudi={chiudiRuota}
+        />
+      )}
       <View style={S.header}>
         <View style={S.flagBar}>
           <View style={[S.flagSeg, { backgroundColor: '#2D5A27' }]} />
@@ -948,10 +1369,18 @@ export default function App() {
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'menu', icon: '🍕', label: 'Menu' },
           { key: 'cart', icon: '🛒', label: 'Carrello' },
+          { key: 'ordini', icon: '🧾', label: 'Ordini' },
           { key: 'offers', icon: '🎁', label: 'Offerte' },
         ].map(n => (
           <TouchableOpacity key={n.key} style={S.navBtn} onPress={() => setTab(n.key)}>
-            <Text style={{ fontSize: 22 }}>{n.icon}</Text>
+            <View>
+              <Text style={{ fontSize: 22 }}>{n.icon}</Text>
+              {n.key === 'cart' && cartN > 0 && (
+                <View style={{ position: 'absolute', top: -4, right: -10, backgroundColor: C.oro, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 }}>
+                  <Text style={{ color: C.marrone, fontSize: 11, fontWeight: '800' }}>{cartN}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[S.navLabel, tab === n.key && S.navLabelOn]}>{n.label}</Text>
             {tab === n.key && <View style={S.navDot} />}
           </TouchableOpacity>
@@ -976,7 +1405,8 @@ const S = StyleSheet.create({
   loginHeader: { backgroundColor: C.rosso, paddingTop: 60, paddingBottom: 24, alignItems: 'center' },
   loginLogo: { fontSize: 42, fontWeight: '900', color: C.crema, letterSpacing: -1 },
   loginSub: { fontSize: 11, color: C.oro, letterSpacing: 4, marginTop: 2 },
-  loginBody: { flex: 1, padding: 24, alignItems: 'center', justifyContent: 'center' },
+  loginBody: { flex: 1, padding: 24 },
+  loginBodyContent: { alignItems: 'center', justifyContent: 'center', flexGrow: 1 },
   loginEmoji: { fontSize: 64, marginBottom: 16 },
   loginTitle: { fontSize: 26, fontWeight: '900', color: C.marrone, marginBottom: 8 },
   loginDesc: { fontSize: 14, color: C.grigio, textAlign: 'center', marginBottom: 24, lineHeight: 20 },

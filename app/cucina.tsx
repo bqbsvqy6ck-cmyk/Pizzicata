@@ -140,7 +140,7 @@ export default function Cucina() {
                 </View>
                 <View style={S.cardHeaderRight}>
                   <Text style={S.cardTotale}>€ {Number(ordine.totale || 0).toFixed(2)}</Text>
-                  <Text style={S.cardTipo}>{isAsporto ? '🏪 Asporto' : '🛵 Domicilio'}</Text>
+                  <Text style={S.cardTipo}>{isAsporto ? '🏪 ASPORTO' : '🛵 DOMICILIO'}</Text>
                   <Text style={{ color: C.oro, fontSize: 18, marginTop: 6 }}>{isAperto ? '▲' : '▼'}</Text>
                 </View>
               </TouchableOpacity>
@@ -261,7 +261,7 @@ const S = StyleSheet.create({
   cardNome: { fontSize: 18, fontWeight: '800', color: C.crema, marginTop: 4 },
   cardOrario: { fontSize: 12, color: C.oro },
   cardTotale: { fontSize: 20, fontWeight: '900', color: C.oro },
-  cardTipo: { fontSize: 12, color: 'rgba(242,232,213,0.5)' },
+  cardTipo: { fontSize: 16, fontWeight: '900', color: C.crema, marginTop: 4, backgroundColor: 'rgba(0,0,0,0.25)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
 
   // Body espanso
   cardBody: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)' },

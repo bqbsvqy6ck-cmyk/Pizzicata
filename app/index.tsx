@@ -173,6 +173,9 @@ const MENU = {
     { id: 127, name: 'Moretti Classica 66cl', desc: '', price: 3.50 },
     { id: 128, name: 'Ichnusa Non Filtrata 50cl', desc: '', price: 3.50 },
     { id: 129, name: 'Aperol Spritz', desc: '', price: 3.50 },
+    { id: 130, name: 'Fontanafredda Rosso', desc: 'Vino rosso, bottiglia', price: 10.00 },
+    { id: 131, name: 'Fontanafredda Arneis', desc: 'Vino bianco, bottiglia', price: 10.00 },
+    { id: 132, name: 'Spumante Santero 958 Extra Dry', desc: 'Spumante, bottiglia', price: 10.00 },
   ],
 };
 
@@ -533,7 +536,9 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
           {/* Articoli carrello con +/- */}
           {cart.map(item => (
             <View key={item.cartKey} style={S.cartCard}>
-              <Text style={{ fontSize: 24 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
+              <View style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={{ fontSize: 22 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
+              </View>
               <View style={{ flex: 1 }}>
                 <Text style={S.cartName}>{item.name}</Text>
                 {item.integrale && <Text style={S.cartExtra}>+ Impasto integrale</Text>}
@@ -1067,6 +1072,33 @@ function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
 }
 
 // Etichetta di sezione: rombo dorato + testo + linea che sfuma
+// Rotella dei premi che gira da sola (animata in JS, funziona ovunque)
+function RotellaGira({ size = 46 }) {
+  const [deg, setDeg] = useState(0);
+  useEffect(() => {
+    let raf;
+    let start = null;
+    const tick = (t) => {
+      if (start === null) start = t;
+      const elapsed = t - start;
+      // un giro completo ogni 6 secondi
+      setDeg((elapsed / 6000) * 360 % 360);
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+  return (
+    <div style={{
+      width: size, height: size, borderRadius: '50%', flexShrink: 0,
+      background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)',
+      border: '3px solid #E8B84B',
+      boxShadow: '0 0 16px rgba(232,184,75,0.6)',
+      transform: `rotate(${deg}deg)`,
+    }} />
+  );
+}
+
 function SecLabel({ testo }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 12, marginHorizontal: 4 }}>
@@ -1149,6 +1181,7 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  // Rotazione continua della rotella premi (animazione via JS, sicura su React Native Web)
   const apertura = statoApertura(ora); // { aperto, prossimaApertura }
 
   if (!utente) return <LoginScreen onLogin={setUtente} />;
@@ -1403,7 +1436,7 @@ export default function App() {
       <SecLabel testo="Gira e vinci" />
       <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <View className="ruota-gira" style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', animation: 'pizzicata-spin 7s linear infinite' }]} />
+          <RotellaGira size={46} />
           <View style={{ flex: 1 }}>
             <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
             <Text style={S.rewardsSub}>Ad ogni ordine puoi vincere</Text>
@@ -1526,7 +1559,7 @@ export default function App() {
           )}
         </View>
       )}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 10, backgroundColor: C.crema }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16, marginTop: -16, paddingHorizontal: 16, paddingVertical: 12, background: 'linear-gradient(135deg, #8B1A1A 0%, #6E1212 100%)', backgroundColor: '#8B1A1A' }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           {Object.keys(MENU).map(c => (
             <TouchableOpacity key={c} style={[S.catPill, cat === c && S.catPillActive]} onPress={() => setCat(c)}>
@@ -1550,9 +1583,9 @@ export default function App() {
           : (cart.find(c => c.cartKey === String(item.id))?.qty || 0);
         return (
           <View key={item.id} style={S.card}>
-            <View style={[S.cardLeft, item.limitato && { backgroundColor: '#FFF8E7' }]}>
+            <View style={[S.cardLeft, item.limitato && { background: 'linear-gradient(160deg, #C8961E 0%, #9E7416 100%)' }]}>
               <Text style={S.cardEmoji}>{CAT_EMOJI[cat]}</Text>
-              {item.limitato && <Text style={{ fontSize: 8, color: C.oro, fontWeight: '700', marginTop: 2 }}>LIMITATO</Text>}
+              {item.limitato && <Text style={{ fontSize: 8, color: '#fff', fontWeight: '800', marginTop: 2 }}>LIMITATO</Text>}
             </View>
             <View style={S.cardBody}>
               <Text style={S.cardName}>{item.name}</Text>
@@ -1615,7 +1648,7 @@ export default function App() {
       {/* Ruote premio */}
       <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)', marginTop: 16 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <View className="ruota-gira" style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', animation: 'pizzicata-spin 7s linear infinite' }]} />
+          <RotellaGira size={46} />
           <View style={{ flex: 1 }}>
             <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
             <Text style={S.rewardsSub}>Su ogni ordine idoneo</Text>
@@ -1857,10 +1890,10 @@ export default function App() {
           let items = [];
           try { items = JSON.parse(o.items); } catch {}
           return (
-            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 18, padding: 16, marginBottom: 12, boxShadow: '0 4px 14px rgba(140,90,20,0.08)' }}>
+            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 18, padding: 16, marginBottom: 12, borderLeftWidth: 5, borderLeftColor: C.oro, boxShadow: '0 4px 14px rgba(140,90,20,0.08)' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                 <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
-                <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone }}>€ {Number(o.totale).toFixed(2)}</Text>
+                <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.rosso, backgroundColor: '#FBEFD2', paddingHorizontal: 12, paddingVertical: 4, borderRadius: 10, overflow: 'hidden' }}>€ {Number(o.totale).toFixed(2)}</Text>
               </View>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
                 <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: info.colore }} />
@@ -1982,7 +2015,7 @@ export default function App() {
         </View>
       </View>
       <View style={{ flex: 1 }}>{screens[tab]}</View>
-      <View style={S.navbar}>
+      <View style={[S.navbar, { background: 'linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
         {[
           { key: 'home', icon: '🏠', label: 'Home' },
           { key: 'menu', icon: '🍕', label: 'Menu' },
@@ -2129,18 +2162,18 @@ const S = StyleSheet.create({
   offerBadge: { backgroundColor: C.oro, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
   offerBadgeText: { fontSize: 10, fontWeight: '800', color: C.marrone },
   catScroll: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.crema },
-  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FBF4E6', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(139,26,26,0.12)', boxShadow: '0 2px 6px rgba(140,90,20,0.06)' },
-  catPillActive: { backgroundColor: '#8B1A1A', borderColor: '#8B1A1A', boxShadow: '0 4px 10px rgba(140,20,20,0.3)' },
-  catPillText: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, fontWeight: '700' },
-  catPillTextActive: { color: '#fff' },
+  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.14)', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)' },
+  catPillActive: { backgroundColor: '#E8B84B', borderColor: '#F2E8D5', boxShadow: '0 3px 10px rgba(0,0,0,0.25)' },
+  catPillText: { fontFamily: FONT_TESTO, fontSize: 12, color: 'rgba(242,232,213,0.9)', fontWeight: '700' },
+  catPillTextActive: { color: '#3D1A00' },
   card: { flexDirection: 'row', backgroundColor: '#FFFCF6', borderRadius: 16, marginBottom: 10, overflow: 'hidden', boxShadow: '0 3px 12px rgba(140,90,20,0.08)' },
-  cardLeft: { width: 64, background: 'linear-gradient(160deg, #F0E0C0, #E8D5B0)', backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
-  cardEmoji: { fontSize: 28 },
+  cardLeft: { width: 66, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center', paddingVertical: 8, borderRightWidth: 3, borderRightColor: C.oro },
+  cardEmoji: { fontSize: 30, filter: 'drop-shadow(0 2px 3px rgba(0,0,0,0.3))' },
   cardBody: { flex: 1, padding: 14 },
   cardName: { fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone },
   cardDesc: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 3, lineHeight: 15 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  cardPrice: { fontFamily: FONT_TITOLO, fontSize: 19, fontWeight: '900', color: C.rosso },
+  cardPrice: { fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.rosso, backgroundColor: '#FBEFD2', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 10, overflow: 'hidden' },
   addBtn: { background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, boxShadow: '0 3px 10px rgba(140,20,20,0.3)' },
   addBtnText: { fontFamily: FONT_TESTO, color: 'white', fontSize: 12, fontWeight: '800' },
   qtyCtrl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
@@ -2170,9 +2203,9 @@ const S = StyleSheet.create({
   emptyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
   cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12, borderWidth: 1, borderColor: '#EBDCC0', boxShadow: '0 2px 8px rgba(140,90,20,0.06)' },
   cartName: { fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: '900', color: C.marrone },
-  cartExtra: { fontSize: 11, color: C.grigio, marginTop: 1 },
-  cartPrice: { fontSize: 13, color: C.rosso, marginTop: 2 },
-  totalCard: { backgroundColor: 'white', borderRadius: 16, padding: 18, marginBottom: 14 },
+  cartExtra: { fontFamily: FONT_TESTO, fontSize: 11, color: C.oro, marginTop: 1, fontWeight: '600' },
+  cartPrice: { fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: '900', color: C.rosso, marginTop: 3 },
+  totalCard: { background: 'linear-gradient(160deg, #FFFBF2 0%, #FBEFD6 100%)', backgroundColor: '#FBF4E6', borderRadius: 16, padding: 18, marginBottom: 14, borderWidth: 2, borderColor: C.oro, boxShadow: '0 6px 18px rgba(200,150,30,0.18)' },
   totalRow: { fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio },
   totalBig: { fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: '900', color: C.marrone },
   checkoutBtn: { backgroundColor: '#8B1A1A', background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 30, boxShadow: '0 8px 22px rgba(140,20,20,0.35)' },
@@ -2185,10 +2218,10 @@ const S = StyleSheet.create({
   offerBtn: { backgroundColor: C.crema, borderRadius: 12, padding: 12, alignItems: 'center', marginTop: 14 },
   offerBtnText: { fontWeight: '800', color: C.marrone, fontSize: 13 },
   errore: { color: C.rosso, textAlign: 'center', marginBottom: 12, fontWeight: '700' },
-  navbar: { flexDirection: 'row', paddingBottom: 14, paddingTop: 10, backgroundColor: '#F7EFDF', borderTopWidth: 1, borderTopColor: C.cremaScuro, justifyContent: 'space-around' },
+  navbar: { flexDirection: 'row', paddingBottom: 14, paddingTop: 10, backgroundColor: '#8B1A1A', borderTopWidth: 2, borderTopColor: C.oro, justifyContent: 'space-around' },
   navBtn: { alignItems: 'center', gap: 3 },
   navIcon: { width: 44, height: 30, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
   navIconOn: { background: 'linear-gradient(135deg, #E8B84B, #C8961E)', boxShadow: '0 4px 12px rgba(200,150,30,0.4)' },
-  navLabel: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, fontWeight: '600' },
-  navLabelOn: { color: C.rosso, fontWeight: '700' },
+  navLabel: { fontFamily: FONT_TESTO, fontSize: 11, color: 'rgba(242,232,213,0.6)', fontWeight: '600' },
+  navLabelOn: { color: C.oroChiaro, fontWeight: '800' },
 });

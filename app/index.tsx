@@ -380,7 +380,7 @@ function LoginScreen({ onLogin }) {
           <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
           <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
         </svg>
-        <Text style={S.loginLogo}>Pizzicata<Text style={{ color: C.oroChiaro }}>.</Text></Text>
+        <Text style={S.loginLogo}>Pizzicata</Text>
         <Text style={S.loginSub}>— TORINO —</Text>
       </View>
       <ScrollView style={S.loginBody} contentContainerStyle={S.loginBodyContent} showsVerticalScrollIndicator={false}>
@@ -1399,7 +1399,7 @@ export default function App() {
         </svg>
         <Text style={S.heroTag}>La nostra passione, la tua pizza</Text>
         <Text style={S.heroBig}>Ordina ora</Text>
-        <Text style={S.heroSub}>Domicilio o asporto · pronta in 25-35 min</Text>
+        <Text style={S.heroSub}>Domicilio o asporto</Text>
         <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
           <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
           <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
@@ -1991,7 +1991,7 @@ export default function App() {
         </View>
         <View style={S.headerInner}>
           <View>
-            <Text style={S.headerLogo}>Pizzicata<Text style={{ color: C.oroChiaro }}>.</Text></Text>
+            <Text style={S.headerLogo}>Pizzicata</Text>
             <Text style={S.headerSub}>— TORINO —</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>

@@ -466,23 +466,28 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
       setErrore('Hai una Combo Famiglia non confermata. Completala e premi "Conferma combo", oppure annullala dal menù.');
       return;
     }
-    // Blocco ordini a locale chiuso, ma solo per ordini di oggi (i preordini per giorni futuri restano permessi)
-    if (apertura && !apertura.aperto && isOggi) {
-      setErrore(`Siamo chiusi in questo momento${apertura.prossimaApertura ? `, riapriamo alle ${apertura.prossimaApertura}` : ''}. Puoi comunque preordinare scegliendo un giorno successivo.`);
-      return;
-    }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
     const orarioFinale = orario === 'custom' ? `${oraCustom}:${minCustom}` : orario;
+    const vuoleSubito = orarioFinale === 'Appena possibile';
+    // Blocco "siamo chiusi" SOLO se il cliente vuole l'ordine subito (Appena possibile) ed è oggi.
+    // Se ha scelto un orario specifico futuro (preordine per oggi più tardi o altro giorno), si può ordinare anche da chiuso.
+    if (apertura && !apertura.aperto && isOggi && vuoleSubito) {
+      setErrore(`Siamo chiusi in questo momento${apertura.prossimaApertura ? `, riapriamo alle ${apertura.prossimaApertura}` : ''}. Per ordinare adesso aspetta l'apertura, oppure scegli un orario specifico più avanti per preordinare.`);
+      return;
+    }
     // Se l'ordine è per oggi e si è scelto un orario specifico (non "Appena possibile"),
     // verifica che non sia un orario già passato o troppo a ridosso (serve un minimo di preparazione).
-    if (isOggi && orarioFinale !== 'Appena possibile') {
+    if (isOggi && !vuoleSubito) {
       const match = orarioFinale.match(/^(\d{1,2}):(\d{2})$/);
       if (match) {
         const minutiScelti = Number(match[1]) * 60 + Number(match[2]);
         const adesso = new Date();
         const minutiOra = adesso.getHours() * 60 + adesso.getMinutes();
         const MARGINE = 20; // minuti minimi per preparare
-        if (minutiScelti < minutiOra + MARGINE) {
+        // A mezzanotte/notte fonda (prima dell'apertura del pranzo) un orario di pranzo/cena è sempre nel futuro:
+        // il confronto con l'ora attuale va fatto solo se siamo già dentro la giornata di servizio.
+        const nottePrima = minutiOra < aMinuti(ORARI_APERTURA.pranzo.apre); // es. 00:30, 7:00...
+        if (!nottePrima && minutiScelti < minutiOra + MARGINE) {
           setErrore(`L'orario scelto è già passato o troppo vicino. Scegli un orario almeno ${MARGINE} minuti più avanti, oppure "Appena possibile".`);
           return;
         }
@@ -523,6 +528,8 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
         </View>
       ) : (
         <>
+          <Text style={{ fontFamily: FONT_TITOLO, fontSize: 26, fontWeight: '900', color: C.marrone, marginTop: 6, marginBottom: 4 }}>Il tuo ordine</Text>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 16 }}>Rivedi e completa il tuo ordine</Text>
           {/* Articoli carrello con +/- */}
           {cart.map(item => (
             <View key={item.cartKey} style={S.cartCard}>
@@ -828,11 +835,11 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
           </View>
 
           <TouchableOpacity
-            style={[S.checkoutBtn, (apertura && !apertura.aperto && isOggi) && { backgroundColor: '#B0A38C' }]}
+            style={S.checkoutBtn}
             onPress={doOrder}
           >
             <Text style={S.checkoutText}>
-              {(apertura && !apertura.aperto && isOggi) ? '🔒 Chiuso — preordina per domani' : 'Conferma Ordine'}
+              {(apertura && !apertura.aperto) ? '📅 Preordina (siamo chiusi ora)' : 'Conferma Ordine'}
             </Text>
           </TouchableOpacity>
         </>
@@ -1094,6 +1101,7 @@ export default function App() {
   const [bibitaOmaggioId, setBibitaOmaggioId] = useState(null); // bibita scelta come omaggio premio ruota
   const [bibitaOmaggioId2, setBibitaOmaggioId2] = useState(null); // seconda bibita (ruota potenziata)
   const [prodottoAggiunte, setProdottoAggiunte] = useState(null); // prodotto di cui scegliere le aggiunte (apre overlay)
+  const [mostraOrari, setMostraOrari] = useState(false); // overlay orari di apertura
   const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
   const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
@@ -1332,6 +1340,16 @@ export default function App() {
 
   const Home = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      {/* Profilo veloce */}
+      <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
+        <View style={[S.profiloMiniIcon, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 20 }}>👤</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={S.profiloMiniNome}>Ciao {utente.nome}{utente.cognome ? ' ' + utente.cognome : ''}!</Text>
+          <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
+        </View>
+        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
+      </TouchableOpacity>
+
       {/* HERO con braci e spicchio */}
       <View style={[S.hero, { background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)' }]}>
         <View style={[S.ember, { width: 60, height: 60, top: -10, right: 30, opacity: 0.5, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
@@ -1354,16 +1372,6 @@ export default function App() {
           <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
         </TouchableOpacity>
       </View>
-
-      {/* Profilo veloce */}
-      <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
-        <View style={[S.profiloMiniIcon, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 20 }}>👤</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={S.profiloMiniNome}>Ciao {utente.nome}!</Text>
-          <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
-        </View>
-        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
-      </TouchableOpacity>
 
       {/* OFFERTE */}
       <SecLabel testo="Offerte" />
@@ -1395,7 +1403,7 @@ export default function App() {
       <SecLabel testo="Gira e vinci" />
       <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)' }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <View style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)' }]} />
+          <View className="ruota-gira" style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', animation: 'pizzicata-spin 7s linear infinite' }]} />
           <View style={{ flex: 1 }}>
             <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
             <Text style={S.rewardsSub}>Ad ogni ordine puoi vincere</Text>
@@ -1425,11 +1433,6 @@ export default function App() {
           <Text style={S.tileTitleNew}>Dove siamo</Text>
           <Text style={S.tileValNew}>C.so Giambone 8/b{'\n'}Torino</Text>
         </TouchableOpacity>
-        <View style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]}>
-          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>🕐</Text></View>
-          <Text style={S.tileTitleNew}>Orari</Text>
-          <Text style={S.tileValNew}>12:00-14:30{'\n'}18:15-22:45</Text>
-        </View>
         <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => {
           const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310');
           window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310';
@@ -1612,7 +1615,7 @@ export default function App() {
       {/* Ruote premio */}
       <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)', marginTop: 16 }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <View style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)' }]} />
+          <View className="ruota-gira" style={[S.wheelMini, { background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', animation: 'pizzicata-spin 7s linear infinite' }]} />
           <View style={{ flex: 1 }}>
             <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
             <Text style={S.rewardsSub}>Su ogni ordine idoneo</Text>
@@ -1669,10 +1672,10 @@ export default function App() {
     return (
       <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
         <TouchableOpacity onPress={() => setTab('home')} style={{ marginBottom: 12 }}>
-          <Text style={{ color: C.rosso, fontSize: 15, fontWeight: '700' }}>← Indietro</Text>
+          <Text style={{ fontFamily: FONT_TESTO, color: C.rosso, fontSize: 15, fontWeight: '700' }}>← Indietro</Text>
         </TouchableOpacity>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>Il tuo profilo</Text>
-        <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 20 }}>I tuoi dati vengono salvati per i prossimi ordini.</Text>
+        <Text style={{ fontFamily: FONT_TITOLO, fontSize: 28, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>Il tuo profilo</Text>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 20 }}>I tuoi dati vengono salvati per i prossimi ordini.</Text>
 
         {utente.premio ? (
           <TouchableOpacity
@@ -1801,33 +1804,34 @@ export default function App() {
 
     return (
       <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-        <Text style={{ fontSize: 24, fontWeight: '900', color: C.marrone, marginBottom: 4 }}>I miei ordini</Text>
-        <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 20 }}>Segui lo stato e rivedi i tuoi ordini passati.</Text>
+        <View style={{ paddingTop: 6 }}>
+          <Text style={{ fontFamily: FONT_TITOLO, fontSize: 26, fontWeight: '900', color: C.marrone, marginBottom: 2 }}>I miei ordini</Text>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 18 }}>Segui lo stato e rivedi i tuoi ordini passati.</Text>
+        </View>
 
-        {caricando && <Text style={{ color: C.grigio, textAlign: 'center', marginTop: 20 }}>Caricamento...</Text>}
+        {caricando && <Text style={{ fontFamily: FONT_TESTO, color: C.grigio, textAlign: 'center', marginTop: 20 }}>Caricamento...</Text>}
 
         {!caricando && (ordini || []).length === 0 && (
           <View style={{ alignItems: 'center', paddingTop: 40 }}>
             <Text style={{ fontSize: 40 }}>🧾</Text>
-            <Text style={{ color: C.grigio, fontSize: 15, marginTop: 12, textAlign: 'center' }}>Non hai ancora fatto ordini.</Text>
-            <TouchableOpacity style={[S.checkoutBtn, { marginTop: 16, paddingHorizontal: 28 }]} onPress={() => setTab('menu')}>
+            <Text style={{ fontFamily: FONT_TESTO, color: C.grigio, fontSize: 15, marginTop: 12, textAlign: 'center' }}>Non hai ancora fatto ordini.</Text>
+            <TouchableOpacity style={[S.checkoutBtn, { marginTop: 16, paddingHorizontal: 28, alignSelf: 'center' }]} onPress={() => setTab('menu')}>
               <Text style={S.checkoutText}>Ordina ora</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {attivi.length > 0 && <Text style={S.secLabel}>IN CORSO</Text>}
+        {attivi.length > 0 && <SecLabel testo="In corso" />}
         {attivi.map(o => {
           const info = STATO_INFO[o.stato] || STATO_INFO.nuovo;
           let items = [];
           try { items = JSON.parse(o.items); } catch {}
           return (
-            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12, borderLeftWidth: 4, borderLeftColor: info.colore }}>
+            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 18, padding: 16, marginBottom: 12, borderLeftWidth: 5, borderLeftColor: info.colore, boxShadow: '0 4px 14px rgba(140,90,20,0.1)' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-                <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: C.rosso }}>€ {Number(o.totale).toFixed(2)}</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
+                <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.rosso }}>€ {Number(o.totale).toFixed(2)}</Text>
               </View>
-              {/* Barra stato */}
               {o.stato !== 'rifiutato' ? (
                 <View style={{ flexDirection: 'row', gap: 4, marginBottom: 8 }}>
                   {STATO_STEPS.map((s, idx) => (
@@ -1835,33 +1839,39 @@ export default function App() {
                   ))}
                 </View>
               ) : null}
-              <Text style={{ fontSize: 15, fontWeight: '800', color: info.colore, marginBottom: 8 }}>{info.label}</Text>
-              <Text style={{ fontSize: 13, color: C.grigio }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: info.colore }} />
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: '800', color: info.colore }}>{info.label}</Text>
+              </View>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.marrone, fontWeight: '600' }}>
                 {items.map(i => `${i.qty}× ${i.name}`).join(', ')}
               </Text>
-              <Text style={{ fontSize: 12, color: C.grigio, marginTop: 6 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''}</Text>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 6 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''}</Text>
             </View>
           );
         })}
 
-        {storico.length > 0 && <Text style={S.secLabel}>STORICO</Text>}
+        {storico.length > 0 && <SecLabel testo="Storico" />}
         {storico.map(o => {
           const info = STATO_INFO[o.stato] || STATO_INFO.consegnato;
           let items = [];
           try { items = JSON.parse(o.items); } catch {}
           return (
-            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12 }}>
+            <View key={o.id} style={{ backgroundColor: '#FBF4E6', borderRadius: 18, padding: 16, marginBottom: 12, boxShadow: '0 4px 14px rgba(140,90,20,0.08)' }}>
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                <Text style={{ fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
-                <Text style={{ fontSize: 13, fontWeight: '800', color: C.marrone }}>€ {Number(o.totale).toFixed(2)}</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio }}>{fmtData(o.created_at)}</Text>
+                <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone }}>€ {Number(o.totale).toFixed(2)}</Text>
               </View>
-              <Text style={{ fontSize: 12, fontWeight: '700', color: info.colore, marginBottom: 8 }}>{info.label}</Text>
-              <Text style={{ fontSize: 13, color: C.grigio, marginBottom: 4 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 }}>
+                <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: info.colore }} />
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '700', color: info.colore }}>{info.label}</Text>
+              </View>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.marrone, fontWeight: '600', marginBottom: 4 }}>
                 {items.map(i => `${i.qty}× ${i.name}`).join(', ')}
               </Text>
-              <Text style={{ fontSize: 12, color: C.grigio, marginBottom: 12 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''} · {o.pagamento || ''}</Text>
-              <TouchableOpacity style={{ backgroundColor: C.rosso, borderRadius: 12, padding: 12, alignItems: 'center' }} onPress={() => riordina(o)}>
-                <Text style={{ color: 'white', fontWeight: '800', fontSize: 14 }}>🔄 Riordina</Text>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginBottom: 12 }}>{o.tipo === 'domicilio' ? '🛵 Consegna' : '🥡 Asporto'} · {o.orario_consegna || ''} · {o.pagamento || ''}</Text>
+              <TouchableOpacity style={{ alignSelf: 'flex-start', background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', borderRadius: 12, paddingVertical: 11, paddingHorizontal: 20, boxShadow: '0 4px 12px rgba(140,20,20,0.3)' }} onPress={() => riordina(o)}>
+                <Text style={{ fontFamily: FONT_TESTO, color: 'white', fontWeight: '800', fontSize: 14 }}>🔄 Riordina</Text>
               </TouchableOpacity>
             </View>
           );
@@ -1902,6 +1912,44 @@ export default function App() {
           onChiudi={() => setProdottoAggiunte(null)}
         />
       )}
+      {mostraOrari && (
+        <div
+          onClick={() => setMostraOrari(false)}
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99998, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}
+        >
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#FBF6EC', borderRadius: 22, width: '100%', maxWidth: 420, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.4)' }}>
+            <div style={{ background: 'radial-gradient(circle at 80% -20%, rgba(232,184,75,0.35), transparent 50%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)', padding: '22px 22px 18px', position: 'relative' }}>
+              <div onClick={() => setMostraOrari(false)} style={{ position: 'absolute', top: 14, right: 16, color: 'rgba(255,255,255,0.8)', fontSize: 22, cursor: 'pointer', lineHeight: 1 }}>✕</div>
+              <div style={{ fontFamily: FONT_TITOLO, fontSize: 24, fontWeight: 900, color: '#F2E8D5' }}>Orari di apertura</div>
+              <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, marginTop: 10, background: apertura.aperto ? 'rgba(45,90,39,0.9)' : 'rgba(0,0,0,0.3)', padding: '6px 12px', borderRadius: 20 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 5, background: apertura.aperto ? '#7BE07B' : '#C0392B', display: 'inline-block' }} />
+                <span style={{ color: '#fff', fontSize: 12, fontWeight: 800, fontFamily: FONT_TESTO }}>{apertura.aperto ? 'Aperti ora' : (apertura.prossimaApertura ? `Chiusi · riapre alle ${apertura.prossimaApertura}` : 'Chiusi')}</span>
+              </div>
+            </div>
+            <div style={{ padding: 22 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#FBF4E6', borderRadius: 14, marginBottom: 10, border: '1px solid #E8D5B0' }}>
+                <span style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: 700, color: '#3D1A00' }}>🍝 Pranzo</span>
+                <span style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: 900, color: '#8B1A1A' }}>12:00 – 14:30</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: '#FBF4E6', borderRadius: 14, marginBottom: 16, border: '1px solid #E8D5B0' }}>
+                <span style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: 700, color: '#3D1A00' }}>🍕 Cena</span>
+                <span style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: 900, color: '#8B1A1A' }}>18:15 – 22:45</span>
+              </div>
+              <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: '#8B7355', textAlign: 'center', marginBottom: 16 }}>Aperti tutti i giorni</div>
+              <div style={{ borderTop: '1px solid #E8D5B0', paddingTop: 14 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10 }}>
+                  <span style={{ fontSize: 18 }}>📍</span>
+                  <span style={{ fontFamily: FONT_TESTO, fontSize: 13, color: '#3D1A00' }}>Corso Eusebio Giambone 8/b, Torino</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <a href="tel:3315695959" style={{ flex: 1, textAlign: 'center', textDecoration: 'none', background: 'linear-gradient(135deg, #A82020, #6E1212)', color: '#fff', fontFamily: FONT_TESTO, fontWeight: 800, fontSize: 13, padding: '11px', borderRadius: 12 }}>📞 331 5695959</a>
+                  <a href="tel:0110362310" style={{ flex: 1, textAlign: 'center', textDecoration: 'none', background: 'linear-gradient(135deg, #A82020, #6E1212)', color: '#fff', fontFamily: FONT_TESTO, fontWeight: 800, fontSize: 13, padding: '11px', borderRadius: 12 }}>📞 011 0362310</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <View style={[S.header, { background: 'radial-gradient(circle at 80% -20%, rgba(232,184,75,0.35), transparent 50%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
         <View style={S.flagBar}>
           <View style={[S.flagSeg, { backgroundColor: '#2D5A27' }]} />
@@ -1914,7 +1962,7 @@ export default function App() {
             <Text style={S.headerSub}>— TORINO —</Text>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: apertura.aperto ? 'rgba(45,90,39,0.9)' : 'rgba(0,0,0,0.35)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => setMostraOrari(true)} style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: apertura.aperto ? 'rgba(45,90,39,0.9)' : 'rgba(0,0,0,0.35)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 20 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: apertura.aperto ? '#7BE07B' : '#C0392B', marginRight: 6 }} />
               <View>
                 <Text style={{ color: 'white', fontSize: 11, fontWeight: '800' }}>{apertura.aperto ? 'Aperti ora' : 'Chiusi'}</Text>
@@ -1922,7 +1970,8 @@ export default function App() {
                   <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 9 }}>Riapre alle {apertura.prossimaApertura}</Text>
                 )}
               </View>
-            </View>
+              <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 11, marginLeft: 4 }}>›</Text>
+            </TouchableOpacity>
             {cartN > 0 && (
               <TouchableOpacity style={S.cartBadge} onPress={() => setTab('cart')}>
                 <Text style={{ fontSize: 22 }}>🛒</Text>
@@ -2080,27 +2129,27 @@ const S = StyleSheet.create({
   offerBadge: { backgroundColor: C.oro, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3, alignSelf: 'flex-start', marginBottom: 6 },
   offerBadgeText: { fontSize: 10, fontWeight: '800', color: C.marrone },
   catScroll: { paddingHorizontal: 16, paddingVertical: 12, backgroundColor: C.crema },
-  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, backgroundColor: 'white', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(139,26,26,0.1)' },
-  catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
-  catPillText: { fontSize: 11, color: C.grigio, fontWeight: '600' },
-  catPillTextActive: { color: 'white' },
-  card: { flexDirection: 'row', backgroundColor: '#FFFCF6', borderRadius: 16, marginBottom: 10, overflow: 'hidden' },
-  cardLeft: { width: 60, backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
+  catPill: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#FBF4E6', marginRight: 8, borderWidth: 1.5, borderColor: 'rgba(139,26,26,0.12)', boxShadow: '0 2px 6px rgba(140,90,20,0.06)' },
+  catPillActive: { backgroundColor: '#8B1A1A', borderColor: '#8B1A1A', boxShadow: '0 4px 10px rgba(140,20,20,0.3)' },
+  catPillText: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, fontWeight: '700' },
+  catPillTextActive: { color: '#fff' },
+  card: { flexDirection: 'row', backgroundColor: '#FFFCF6', borderRadius: 16, marginBottom: 10, overflow: 'hidden', boxShadow: '0 3px 12px rgba(140,90,20,0.08)' },
+  cardLeft: { width: 64, background: 'linear-gradient(160deg, #F0E0C0, #E8D5B0)', backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center', paddingVertical: 8 },
   cardEmoji: { fontSize: 28 },
   cardBody: { flex: 1, padding: 14 },
-  cardName: { fontSize: 15, fontWeight: '700', color: C.marrone },
-  cardDesc: { fontSize: 11, color: C.grigio, marginTop: 3, lineHeight: 15 },
+  cardName: { fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone },
+  cardDesc: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 3, lineHeight: 15 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10 },
-  cardPrice: { fontSize: 18, fontWeight: '800', color: C.rosso },
-  addBtn: { backgroundColor: C.rosso, borderRadius: 10, paddingHorizontal: 14, paddingVertical: 7 },
-  addBtnText: { color: 'white', fontSize: 12, fontWeight: '700' },
+  cardPrice: { fontFamily: FONT_TITOLO, fontSize: 19, fontWeight: '900', color: C.rosso },
+  addBtn: { background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8, boxShadow: '0 3px 10px rgba(140,20,20,0.3)' },
+  addBtnText: { fontFamily: FONT_TESTO, color: 'white', fontSize: 12, fontWeight: '800' },
   qtyCtrl: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   qtyMinus: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.cremaScuro, alignItems: 'center', justifyContent: 'center' },
   qtyMinusText: { fontSize: 16, fontWeight: '700', color: C.rosso },
   qtyN: { fontSize: 15, fontWeight: '700', color: C.marrone, minWidth: 18, textAlign: 'center' },
   qtyPlus: { width: 28, height: 28, borderRadius: 8, backgroundColor: C.rosso, alignItems: 'center', justifyContent: 'center' },
   qtyPlusText: { fontSize: 16, fontWeight: '700', color: 'white' },
-  formBox: { backgroundColor: 'white', borderRadius: 16, padding: 16, marginBottom: 12 },
+  formBox: { backgroundColor: '#FBF4E6', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#EBDCC0' },
   formLabel: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, letterSpacing: 2, textTransform: 'uppercase', marginBottom: 8, fontWeight: '700' },
   typeBtn: { flex: 1, padding: 12, borderRadius: 12, alignItems: 'center', backgroundColor: C.cremaScuro, gap: 4 },
   typeBtnActive: { backgroundColor: C.rosso },
@@ -2115,17 +2164,17 @@ const S = StyleSheet.create({
   pagLabel: { fontSize: 14, fontWeight: '700', color: C.marrone },
   pagSub: { fontSize: 11, color: C.grigio, marginTop: 1 },
   empty: { alignItems: 'center', paddingTop: 80, gap: 12, paddingHorizontal: 16 },
-  emptyTitle: { fontSize: 20, fontWeight: '700', color: C.marrone },
+  emptyTitle: { fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: '900', color: C.marrone },
   emptySub: { fontSize: 13, color: C.grigio, textAlign: 'center' },
   emptyBtn: { backgroundColor: C.rosso, borderRadius: 14, paddingHorizontal: 28, paddingVertical: 12, marginTop: 8 },
   emptyBtnText: { color: 'white', fontWeight: '700', fontSize: 14 },
-  cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'white', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12 },
-  cartName: { fontSize: 14, fontWeight: '700', color: C.marrone },
+  cartCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginBottom: 10, gap: 12, borderWidth: 1, borderColor: '#EBDCC0', boxShadow: '0 2px 8px rgba(140,90,20,0.06)' },
+  cartName: { fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: '900', color: C.marrone },
   cartExtra: { fontSize: 11, color: C.grigio, marginTop: 1 },
   cartPrice: { fontSize: 13, color: C.rosso, marginTop: 2 },
   totalCard: { backgroundColor: 'white', borderRadius: 16, padding: 18, marginBottom: 14 },
-  totalRow: { fontSize: 13, color: C.grigio },
-  totalBig: { fontSize: 18, fontWeight: '800', color: C.marrone },
+  totalRow: { fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio },
+  totalBig: { fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: '900', color: C.marrone },
   checkoutBtn: { backgroundColor: '#8B1A1A', background: 'linear-gradient(135deg, #A82020 0%, #6E1212 100%)', borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 30, boxShadow: '0 8px 22px rgba(140,20,20,0.35)' },
   checkoutText: { fontFamily: FONT_TESTO, color: 'white', fontSize: 16, fontWeight: '800' },
   offerCard: { borderRadius: 20, padding: 22, marginBottom: 14 },

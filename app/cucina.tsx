@@ -250,8 +250,6 @@ export default function Cucina() {
           </TouchableOpacity>
         )}
         {errMsg ? <Text style={S.errMsg}>{errMsg}</Text> : null}
-
-        </View>
       </View>
 
       {ceNuoviDaAccettare && (

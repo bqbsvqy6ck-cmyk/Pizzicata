@@ -19,6 +19,21 @@ const STATI = {
   in_lavorazione: { label: 'In lavorazione', color: '#D07000', next: 'pronto',          nextLabel: '🛵  In consegna' },
   pronto:         { label: 'Pronto',         color: '#27AE60', next: 'consegnato',      nextLabel: '🛵  Consegnato / Ritirato' },
   consegnato:     { label: 'Consegnato',     color: '#555',    next: null,              nextLabel: null },
+  rifiutato:      { label: 'Rifiutato',      color: '#8B0000', next: null,              nextLabel: null },
+};
+
+// Livelli di traffico: colore + tempo di attesa comunicato al cliente
+const TRAFFICO_INFO = {
+  verde:  { label: 'Poco traffico',   tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
+  giallo: { label: 'Traffico medio',  tempo: '30-40 min', color: '#E8A317', emoji: '🟡' },
+  rosso:  { label: 'Traffico alto',   tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
+};
+
+// Livelli di traffico/attesa che la cucina può impostare
+const TRAFFICO = {
+  verde:  { label: 'Poco traffico',  tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
+  giallo: { label: 'Traffico medio', tempo: '30-40 min', color: '#E8A800', emoji: '🟡' },
+  rosso:  { label: 'Molto traffico', tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
 };
 
 const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
@@ -31,6 +46,8 @@ export default function Cucina() {
   const [errMsg, setErrMsg] = useState('');
   const [suonoAttivo, setSuonoAttivo] = useState(false);
   const [nuovoArrivato, setNuovoArrivato] = useState(false); // per il lampeggio visivo
+  const [traffico, setTraffico] = useState('verde'); // livello traffico locale
+  const [traffico, setTraffico] = useState('verde'); // verde/giallo/rosso - mole di lavoro
   const idsNuoviPrec = useRef(null); // set degli id "nuovi" al giro precedente
   const audioCtxRef = useRef(null);
 
@@ -80,18 +97,7 @@ export default function Cucina() {
       .limit(100);
     if (error) { setErrMsg('Errore caricamento: ' + error.message); return; }
     if (data) {
-      // Rileva ordini nuovi (stato 'nuovo') comparsi dall'ultimo controllo
-      const idsNuoviOra = new Set(data.filter(o => o.stato === 'nuovo').map(o => o.id));
-      if (idsNuoviPrec.current !== null) {
-        let ceNeUnoNuovo = false;
-        idsNuoviOra.forEach(id => { if (!idsNuoviPrec.current.has(id)) ceNeUnoNuovo = true; });
-        if (ceNeUnoNuovo) {
-          if (suonoAttivo) suonaCampanello();
-          setNuovoArrivato(true);
-          setTimeout(() => setNuovoArrivato(false), 6000);
-        }
-      }
-      idsNuoviPrec.current = idsNuoviOra;
+      idsNuoviPrec.current = new Set(data.filter(o => o.stato === 'nuovo').map(o => o.id));
       setOrdini(data);
     }
     setErrMsg('');
@@ -102,6 +108,65 @@ export default function Cucina() {
     const interval = setInterval(carica, 15000);
     return () => clearInterval(interval);
   }, []);
+
+  // Carica il livello di traffico attuale dal database
+  const caricaTraffico = async () => {
+    const { data } = await supabase.from('stato_locale').select('traffico').eq('id', 1).single();
+    if (data && data.traffico) setTraffico(data.traffico);
+  };
+  useEffect(() => {
+    caricaTraffico();
+    const t = setInterval(caricaTraffico, 30000); // riallinea ogni 30s
+    return () => clearInterval(t);
+  }, []);
+
+  // Cambia il livello di traffico (lo vedrà anche il cliente nella sua home)
+  const cambiaTraffico = async (livello) => {
+    setTraffico(livello); // aggiorna subito a schermo
+    const { error } = await supabase
+      .from('stato_locale')
+      .update({ traffico: livello, aggiornato_il: new Date().toISOString() })
+      .eq('id', 1);
+    if (error) setErrMsg('Errore traffico: ' + error.message);
+  };
+
+  // Carica il livello di traffico attuale dal database
+  const caricaTraffico = async () => {
+    const { data } = await supabase.from('impostazioni').select('valore').eq('id', 'traffico').single();
+    if (data?.valore) setTraffico(data.valore);
+  };
+  useEffect(() => {
+    caricaTraffico();
+    const t = setInterval(caricaTraffico, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Imposta un nuovo livello di traffico (lo vedono anche i clienti)
+  const cambiaTraffico = async (livello) => {
+    setTraffico(livello); // aggiorna subito a schermo
+    await supabase.from('impostazioni').update({ valore: livello, updated_at: new Date().toISOString() }).eq('id', 'traffico');
+  };
+
+  // Conta gli ordini ancora da accettare (stato 'nuovo')
+  const ordiniNuovi = ordini.filter(o => o.stato === 'nuovo');
+  const ceNuoviDaAccettare = ordiniNuovi.length > 0;
+
+  // Suono che si RIPETE finché ci sono ordini nuovi non ancora accettati.
+  // Si ferma da solo appena prendi in carico (o rifiuti) tutti gli ordini nuovi.
+  useEffect(() => {
+    if (!suonoAttivo || !ceNuoviDaAccettare) return;
+    suonaCampanello(); // suona subito
+    const t = setInterval(suonaCampanello, 3000); // e ripete ogni 3 secondi
+    return () => clearInterval(t);
+  }, [suonoAttivo, ceNuoviDaAccettare, ordiniNuovi.length]);
+
+  // Lampeggio visivo attivo finché ci sono ordini nuovi non accettati
+  useEffect(() => {
+    if (!ceNuoviDaAccettare) { setNuovoArrivato(false); return; }
+    setNuovoArrivato(true);
+    const t = setInterval(() => setNuovoArrivato(v => !v), 700); // lampeggia
+    return () => clearInterval(t);
+  }, [ceNuoviDaAccettare]);
 
   const avanzaStato = async (ordine) => {
     const cfg = STATI[ordine.stato];
@@ -117,6 +182,19 @@ export default function Cucina() {
       return;
     }
     setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, stato: cfg.next } : o));
+  };
+
+  const rifiutaOrdine = async (ordine) => {
+    const conferma = window.confirm(`Rifiutare l'ordine di ${ordine.cliente || 'cliente'}?\n\nL'ordine verrà segnato come rifiutato.`);
+    if (!conferma) return;
+    setLoading(true);
+    const { error } = await supabase
+      .from('ordini')
+      .update({ stato: 'rifiutato' })
+      .eq('id', ordine.id);
+    setLoading(false);
+    if (error) { setErrMsg('Errore: ' + error.message); return; }
+    setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, stato: 'rifiutato' } : o));
   };
 
   const cambiaOrario = async (ordine) => {
@@ -138,9 +216,22 @@ export default function Cucina() {
     setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, orario_consegna: val } : o));
   };
 
+  // Reset automatico giornaliero: gli ordini già usciti (consegnati o rifiutati)
+  // più vecchi di 24 ore non vengono più mostrati. La lista si "pulisce" da sola ogni giorno.
+  const ORA = Date.now();
+  const VENTIQUATTRORE = 24 * 60 * 60 * 1000;
+  const nonVecchio = (o) => {
+    // gli ordini ancora in lavorazione restano sempre visibili
+    if (o.stato !== 'consegnato' && o.stato !== 'rifiutato') return true;
+    // quelli usciti spariscono dopo 24h
+    const t = new Date(o.created_at).getTime();
+    if (isNaN(t)) return true;
+    return (ORA - t) < VENTIQUATTRORE;
+  };
+
   const visibili = filtro === 'attivi'
-    ? ordini.filter(o => o.stato !== 'consegnato')
-    : ordini;
+    ? ordini.filter(o => o.stato !== 'consegnato' && o.stato !== 'rifiutato')
+    : ordini.filter(nonVecchio);
 
   return (
     <View style={S.root}>
@@ -156,7 +247,7 @@ export default function Cucina() {
               onPress={() => setFiltro('attivi')}
             >
               <Text style={[S.filtroBtnTxt, filtro === 'attivi' && S.filtroBtnTxtOn]}>
-                Attivi ({ordini.filter(o => o.stato !== 'consegnato').length})
+                Attivi ({ordini.filter(o => o.stato !== 'consegnato' && o.stato !== 'rifiutato').length})
               </Text>
             </TouchableOpacity>
             <TouchableOpacity
@@ -184,13 +275,63 @@ export default function Cucina() {
           </TouchableOpacity>
         )}
         {errMsg ? <Text style={S.errMsg}>{errMsg}</Text> : null}
+
+        {/* Selettore traffico / tempo di attesa (lo vedono i clienti) */}
+        <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10 }}>
+          <Text style={{ fontFamily: FONT_TESTO, color: 'rgba(242,232,213,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 8 }}>⏱️ TEMPO DI ATTESA (visibile ai clienti)</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {Object.keys(TRAFFICO).map(liv => {
+              const t = TRAFFICO[liv];
+              const attivo = traffico === liv;
+              return (
+                <TouchableOpacity
+                  key={liv}
+                  onPress={() => cambiaTraffico(liv)}
+                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: attivo ? t.color : 'rgba(255,255,255,0.08)', borderWidth: attivo ? 0 : 1, borderColor: 'rgba(255,255,255,0.15)' }}
+                >
+                  <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, color: attivo ? '#fff' : 'rgba(242,232,213,0.7)', fontSize: 11, fontWeight: '800', marginTop: 2 }}>{t.tempo}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
       </View>
 
-      {nuovoArrivato && (
-        <View style={{ backgroundColor: '#27AE60', padding: 14, alignItems: 'center' }}>
-          <Text style={{ color: 'white', fontSize: 18, fontWeight: '900' }}>🔔 NUOVO ORDINE ARRIVATO!</Text>
+      {ceNuoviDaAccettare && (
+        <View style={{ backgroundColor: nuovoArrivato ? '#C0392B' : '#8B0000', padding: 16, alignItems: 'center' }}>
+          <Text style={{ color: 'white', fontSize: 18, fontWeight: '900' }}>
+            🔔 {ordiniNuovi.length === 1 ? '1 NUOVO ORDINE DA ACCETTARE!' : `${ordiniNuovi.length} NUOVI ORDINI DA ACCETTARE!`}
+          </Text>
+          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>Premi "Prendi in carico" o "Rifiuta" per fermare l'allarme</Text>
         </View>
       )}
+
+      {/* CONTROLLO TRAFFICO */}
+      <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.oro, marginBottom: 8 }}>⏱️ TEMPO DI ATTESA MOSTRATO AI CLIENTI</Text>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {['verde', 'giallo', 'rosso'].map(liv => {
+            const info = TRAFFICO_INFO[liv];
+            const attivo = traffico === liv;
+            return (
+              <TouchableOpacity
+                key={liv}
+                onPress={() => cambiaTraffico(liv)}
+                style={{
+                  flex: 1, borderRadius: 12, padding: 10, alignItems: 'center',
+                  backgroundColor: attivo ? info.color : 'rgba(255,255,255,0.06)',
+                  borderWidth: 2, borderColor: attivo ? info.color : 'rgba(255,255,255,0.1)',
+                }}
+              >
+                <Text style={{ fontSize: 20 }}>{info.emoji}</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '800', color: attivo ? '#fff' : C.grigio, marginTop: 2 }}>{info.tempo}</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 9, color: attivo ? 'rgba(255,255,255,0.8)' : C.grigio, marginTop: 1 }}>{info.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </View>
 
       {/* LISTA ORDINI */}
       <ScrollView style={S.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
@@ -302,35 +443,60 @@ export default function Cucina() {
                     </View>
                   ) : null}
 
-                  {/* Bottone avanza stato */}
+                  {/* Bottone avanza stato + Rifiuta */}
                   {cfg.next && (
-                    <TouchableOpacity
-                      style={[S.actionBtn, { backgroundColor: cfg.color }, loading && { opacity: 0.6 }]}
-                      onPress={() => avanzaStato(ordine)}
-                      disabled={loading}
-                    >
-                      <Text style={S.actionBtnTxt}>
-                        {loading ? 'Aggiornamento...' : cfg.nextLabel}
-                      </Text>
-                    </TouchableOpacity>
+                    <View style={{ flexDirection: 'row', gap: 8 }}>
+                      <TouchableOpacity
+                        style={[S.actionBtn, { backgroundColor: cfg.color, flex: 1, margin: 0 }, loading && { opacity: 0.6 }]}
+                        onPress={() => avanzaStato(ordine)}
+                        disabled={loading}
+                      >
+                        <Text style={S.actionBtnTxt}>
+                          {loading ? 'Aggiornamento...' : cfg.nextLabel}
+                        </Text>
+                      </TouchableOpacity>
+                      {(ordine.stato === 'nuovo' || ordine.stato === 'in_lavorazione') && (
+                        <TouchableOpacity
+                          style={[S.actionBtn, { backgroundColor: '#8B0000', margin: 0, paddingHorizontal: 18 }, loading && { opacity: 0.6 }]}
+                          onPress={() => rifiutaOrdine(ordine)}
+                          disabled={loading}
+                        >
+                          <Text style={S.actionBtnTxt}>✕ Rifiuta</Text>
+                        </TouchableOpacity>
+                      )}
+                    </View>
                   )}
-                  {!cfg.next && (
+                  {ordine.stato === 'consegnato' && (
                     <View style={[S.actionBtn, { backgroundColor: '#333' }]}>
                       <Text style={S.actionBtnTxt}>✓ Ordine completato</Text>
+                    </View>
+                  )}
+                  {ordine.stato === 'rifiutato' && (
+                    <View style={[S.actionBtn, { backgroundColor: '#8B0000' }]}>
+                      <Text style={S.actionBtnTxt}>✕ Ordine rifiutato</Text>
                     </View>
                   )}
                 </View>
               )}
 
-              {/* Bottone rapido anche da chiuso (solo per "nuovo") */}
+              {/* Bottoni rapidi anche da chiuso (solo per "nuovo") */}
               {!isAperto && ordine.stato === 'nuovo' && (
-                <TouchableOpacity
-                  style={[S.quickBtn, { backgroundColor: STATI.nuovo.color }]}
-                  onPress={() => avanzaStato(ordine)}
-                  disabled={loading}
-                >
-                  <Text style={S.quickBtnTxt}>▶ Prendi in carico</Text>
-                </TouchableOpacity>
+                <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 14, marginBottom: 14 }}>
+                  <TouchableOpacity
+                    style={[S.quickBtn, { backgroundColor: STATI.nuovo.color, flex: 1, marginHorizontal: 0, marginBottom: 0 }]}
+                    onPress={() => avanzaStato(ordine)}
+                    disabled={loading}
+                  >
+                    <Text style={S.quickBtnTxt}>▶ Prendi in carico</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[S.quickBtn, { backgroundColor: '#8B0000', marginHorizontal: 0, marginBottom: 0, paddingHorizontal: 18 }]}
+                    onPress={() => rifiutaOrdine(ordine)}
+                    disabled={loading}
+                  >
+                    <Text style={S.quickBtnTxt}>✕ Rifiuta</Text>
+                  </TouchableOpacity>
+                </View>
               )}
             </View>
           );

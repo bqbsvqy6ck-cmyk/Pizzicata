@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const supabase = createClient(
@@ -14,6 +14,24 @@ const C = {
 // Font: Fraunces per i titoli (carattere caldo da trattoria), Inter per il testo.
 const FONT_TITOLO = "'Fraunces', Georgia, serif";
 const FONT_TESTO = "'Inter', -apple-system, sans-serif";
+
+// ═══════════════════════════════════════════════════════════
+//  VIDEO "DAL FORNO" — per aggiungerne altri, copia una riga
+//  qui sotto e cambia: piattaforma ('tiktok' o 'instagram'),
+//  url (il link del video) e titolo.
+// ═══════════════════════════════════════════════════════════
+const VIDEO_DAL_FORNO = [
+  { piattaforma: 'instagram', url: 'https://www.instagram.com/reel/C9SNNnHt5Tf/', titolo: 'Dietro le quinte' },
+  { piattaforma: 'tiktok', url: 'https://vm.tiktok.com/ZNRTJXwPe/', titolo: 'In pizzeria' },
+  { piattaforma: 'tiktok', url: 'https://vm.tiktok.com/ZNRTJbhke/', titolo: 'Dal forno a legna' },
+];
+
+// Livelli di traffico mostrati al cliente (impostati dalla cucina)
+const TRAFFICO_INFO = {
+  verde:  { label: 'Tempi regolari', tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
+  giallo: { label: 'Un po\' di attesa', tempo: '30-40 min', color: '#E8A317', emoji: '🟡' },
+  rosso:  { label: 'Molto richiesti', tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
+};
 
 const MENU = {
   'Pizze Rosse': [
@@ -191,6 +209,58 @@ const isPizzaCombo = (id) => id >= 1 && id <= 66;       // tutte le pizze
 const isDolceCombo = (id) => id >= 102 && id <= 113;    // dolci
 const isBibitaCombo = (id) => id >= 114 && id <= 122;   // bibite analcoliche (no birre/spritz)
 
+// Lista piatta di tutti i prodotti (per ricerca vocale)
+const TUTTI_PRODOTTI = Object.keys(MENU).reduce((acc, cat) => {
+  (MENU[cat] || []).forEach(p => acc.push({ ...p, categoria: cat }));
+  return acc;
+}, []);
+
+// Normalizza testo per confronto: minuscolo, senza accenti, senza punteggiatura
+const normalizza = (s) => (s || '')
+  .toLowerCase()
+  .normalize('NFD').replace(/[\u0300-\u036f]/g, '') // togli accenti
+  .replace(/[^a-z0-9\s]/g, ' ')
+  .replace(/\s+/g, ' ')
+  .trim();
+
+// Converte numeri scritti a parole in cifre (uno->1, due->2...)
+const NUMERI_PAROLA = { uno: 1, una: 1, un: 1, due: 2, tre: 3, quattro: 4, cinque: 5, sei: 6, sette: 7, otto: 8, nove: 9, dieci: 10 };
+
+// Cerca nel testo parlato i prodotti del menu. Ritorna [{prodotto, qty}]
+const cercaProdottiNelTesto = (testoParlato) => {
+  const testo = normalizza(testoParlato);
+  const trovati = [];
+  // ordina i prodotti per nome più lungo prima (così "diavola piccante" batte "diavola")
+  const prodottiOrdinati = [...TUTTI_PRODOTTI].sort((a, b) => b.name.length - a.name.length);
+  let testoResiduo = ' ' + testo + ' ';
+  prodottiOrdinati.forEach(prod => {
+    const nomeNorm = normalizza(prod.name);
+    if (nomeNorm.length < 3) return;
+    // genera varianti del nome per gestire i plurali (diavola/diavole, panino/panini)
+    const varianti = [nomeNorm];
+    if (nomeNorm.endsWith('a')) varianti.push(nomeNorm.slice(0, -1) + 'e');
+    if (nomeNorm.endsWith('o')) varianti.push(nomeNorm.slice(0, -1) + 'i');
+    if (nomeNorm.endsWith('e')) varianti.push(nomeNorm.slice(0, -1) + 'i');
+    let idx = -1, varianteTrovata = '';
+    for (const v of varianti) {
+      idx = testoResiduo.indexOf(' ' + v + ' ');
+      if (idx !== -1) { varianteTrovata = v; break; }
+    }
+    if (idx !== -1) {
+      // cerca un numero subito prima del nome
+      const prima = testoResiduo.slice(0, idx).trim().split(' ');
+      const ultimaParola = prima[prima.length - 1] || '';
+      let qty = 1;
+      if (/^\d+$/.test(ultimaParola)) qty = parseInt(ultimaParola);
+      else if (NUMERI_PAROLA[ultimaParola]) qty = NUMERI_PAROLA[ultimaParola];
+      trovati.push({ prodotto: prod, qty });
+      // rimuovi il pezzo trovato per non ri-matcharlo
+      testoResiduo = testoResiduo.replace(' ' + varianteTrovata + ' ', '   ');
+    }
+  });
+  return trovati;
+};
+
 // --- AGGIUNTE / EXTRA ---
 // Categorie su cui si possono fare aggiunte
 const CATEGORIE_CON_AGGIUNTE = ['Pizze Rosse', 'Pizze Bianche', 'Pizze Speciali', 'Limited Edition', 'Focacce', 'Calzoni', 'Panuozzi', 'Hamburger', 'Farinata'];
@@ -342,7 +412,22 @@ function LoginScreen({ onLogin }) {
     const { data } = await supabase.from('clienti').select('*').eq('telefono', clean).single();
     setLoading(false);
     if (data) {
-      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '', premio: data.premio_attivo || '' });
+      // Controlla se oggi è il compleanno del cliente -> attiva sconto 10% (una volta al giorno)
+      let premioFinale = data.premio_attivo || '';
+      if (data.compleanno && data.compleanno.trim()) {
+        const oggi = new Date();
+        const [, mese, giorno] = data.compleanno.split('-').map(Number);
+        const eCompleannoOggi = (oggi.getMonth() + 1 === mese && oggi.getDate() === giorno);
+        const annoOggi = oggi.getFullYear();
+        // usa un campo per ricordare se lo sconto compleanno è già stato dato quest'anno
+        const giaUsatoQuestAnno = data.compleanno_usato === String(annoOggi);
+        if (eCompleannoOggi && !giaUsatoQuestAnno && !premioFinale) {
+          premioFinale = 'compleanno';
+          // segna che quest'anno il bonus compleanno è stato assegnato
+          try { supabase.from('clienti').update({ premio_attivo: 'compleanno', compleanno_usato: String(annoOggi) }).eq('telefono', clean); } catch (e) {}
+        }
+      }
+      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '', premio: premioFinale, compleanno: data.compleanno || '' });
     } else {
       setStep(2);
       setErrore('');
@@ -559,7 +644,28 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
             </View>
           ))}
 
-          {/* Banner info pane */}
+          {/* Suggerimento leggero: manca una bibita? */}
+          {(() => {
+            const haBibita = cart.some(i => isBibitaCombo(i.id));
+            const haCibo = cart.some(i => i.id < 114 || i.id >= 200);
+            if (haBibita || !haCibo) return null;
+            const primaBibita = (MENU['Bevande'] || []).find(b => isBibitaCombo(b.id));
+            if (!primaBibita) return null;
+            return (
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => { setCat('Bevande'); setTab('menu'); }}
+                style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#EBDCC0', borderStyle: 'dashed' }}
+              >
+                <Text style={{ fontSize: 28 }}>🥤</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Vuoi aggiungere una bibita?</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Completa l'ordine con qualcosa da bere</Text>
+                </View>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.rosso, fontWeight: '800' }}>Aggiungi →</Text>
+              </TouchableOpacity>
+            );
+          })()}
           {haPane && (
             <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 12 }}>
               <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Ordine con pane del forno</Text>
@@ -887,11 +993,12 @@ function RuotaFortuna({ girando, premio, rotazione, potenziata, onGira, onChiudi
 
   // Determina testo premio vinto
   const premioBibita = premio === 'bibita' || premio === 'bibita2';
-  const premioSconto = premio === 'sconto10' || premio === 'sconto15';
+  const premioSconto = premio === 'sconto10' || premio === 'sconto15' || premio === 'compleanno';
   let premioTitolo = '';
   if (premio === 'bibita') premioTitolo = 'Bibita in omaggio!';
   else if (premio === 'bibita2') premioTitolo = '2 bibite in omaggio!';
   else if (premio === 'sconto10') premioTitolo = 'Sconto 10%!';
+  else if (premio === 'compleanno') premioTitolo = 'Buon compleanno! Sconto 10%';
   else if (premio === 'sconto15') premioTitolo = 'Sconto 15%!';
 
   const bordoColore = potenziata ? '#E0B84A' : '#C8961E';
@@ -1109,6 +1216,115 @@ function SecLabel({ testo }) {
   );
 }
 
+// Overlay per ordinare a voce (usa il riconoscimento vocale del browser)
+function OrdineVocale({ onChiudi, onConferma }) {
+  const [stato, setStato] = useState('pronto'); // pronto | ascolto | risultato | errore
+  const [testoParlato, setTestoParlato] = useState('');
+  const [prodottiTrovati, setProdottiTrovati] = useState([]);
+  const [messaggioErrore, setMessaggioErrore] = useState('');
+  const recognitionRef = useRef(null);
+
+  const iniziaAscolto = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      setMessaggioErrore('Il tuo browser non supporta il microfono. Prova con Chrome su Android, oppure ordina dal menù.');
+      setStato('errore');
+      return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'it-IT';
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.onresult = (event) => {
+      const testo = event.results[0][0].transcript;
+      setTestoParlato(testo);
+      const trovati = cercaProdottiNelTesto(testo);
+      setProdottiTrovati(trovati);
+      setStato('risultato');
+    };
+    recognition.onerror = (event) => {
+      setMessaggioErrore(event.error === 'not-allowed' ? 'Devi permettere l\'uso del microfono nel browser.' : 'Non ho sentito bene, riprova.');
+      setStato('errore');
+    };
+    recognition.onend = () => { if (stato === 'ascolto') setStato(s => s === 'ascolto' ? 'pronto' : s); };
+    recognitionRef.current = recognition;
+    setTestoParlato('');
+    setProdottiTrovati([]);
+    setStato('ascolto');
+    recognition.start();
+  };
+
+  const totaleStimato = prodottiTrovati.reduce((s, t) => s + t.prodotto.price * t.qty, 0);
+
+  return (
+    <div onClick={onChiudi} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#F7EFDF', borderTopLeftRadius: 26, borderTopRightRadius: 26, width: '100%', maxWidth: 480, padding: 24, maxHeight: '85vh', overflowY: 'auto', boxShadow: '0 -10px 40px rgba(0,0,0,0.3)' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+          <span style={{ fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: 900, color: C.marrone }}>🎤 Ordina a voce</span>
+          <span onClick={onChiudi} style={{ fontSize: 24, color: C.grigio, cursor: 'pointer' }}>✕</span>
+        </div>
+
+        {stato === 'pronto' && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.grigio, marginBottom: 20, lineHeight: 1.5 }}>
+              Premi il microfono e dì cosa vuoi.<br />Esempio: <i>"una margherita e due coca cola"</i>
+            </div>
+            <button onClick={iniziaAscolto} style={{ width: 100, height: 100, borderRadius: '50%', border: 'none', background: 'linear-gradient(135deg, #A82020, #6E1212)', color: '#fff', fontSize: 44, cursor: 'pointer', boxShadow: '0 8px 24px rgba(140,20,20,0.4)' }}>🎤</button>
+          </div>
+        )}
+
+        {stato === 'ascolto' && (
+          <div style={{ textAlign: 'center', padding: '30px 0' }}>
+            <div style={{ width: 100, height: 100, borderRadius: '50%', background: 'linear-gradient(135deg, #C0392B, #8B1A1A)', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 44, animation: 'pizzicata-spin 2s linear infinite' }}>👂</div>
+            <div style={{ fontFamily: FONT_TESTO, fontSize: 16, fontWeight: 700, color: C.rosso, marginTop: 16 }}>Ti ascolto... parla ora</div>
+          </div>
+        )}
+
+        {stato === 'errore' && (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 40, marginBottom: 12 }}>😕</div>
+            <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, marginBottom: 20 }}>{messaggioErrore}</div>
+            <button onClick={() => setStato('pronto')} style={{ background: C.rosso, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT_TESTO }}>Riprova</button>
+          </div>
+        )}
+
+        {stato === 'risultato' && (
+          <div>
+            <div style={{ background: '#fff', borderRadius: 12, padding: 12, marginBottom: 16, border: '1px solid #E8D5B0' }}>
+              <div style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, fontWeight: 700 }}>HO CAPITO:</div>
+              <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, fontStyle: 'italic', marginTop: 4 }}>"{testoParlato}"</div>
+            </div>
+
+            {prodottiTrovati.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '10px 0 20px' }}>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, marginBottom: 16 }}>Non ho riconosciuto prodotti del menù. Riprova dicendo il nome esatto di una pizza.</div>
+                <button onClick={() => setStato('pronto')} style={{ background: C.rosso, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT_TESTO }}>🎤 Riprova</button>
+              </div>
+            ) : (
+              <div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginBottom: 8, fontWeight: 700 }}>Aggiungo al carrello:</div>
+                {prodottiTrovati.map((t, i) => (
+                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #E8D5B0' }}>
+                    <span style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.marrone, fontWeight: 600 }}>{t.qty}× {t.prodotto.name}</span>
+                    <span style={{ fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: 900, color: C.rosso }}>€ {(t.prodotto.price * t.qty).toFixed(2)}</span>
+                  </div>
+                ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', marginBottom: 12 }}>
+                  <span style={{ fontFamily: FONT_TESTO, fontWeight: 800, color: C.marrone }}>Totale stimato</span>
+                  <span style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: 900, color: C.rosso }}>€ {totaleStimato.toFixed(2)}</span>
+                </div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, textAlign: 'center', marginBottom: 14 }}>Potrai controllare e modificare tutto prima di confermare</div>
+                <button onClick={() => onConferma(prodottiTrovati)} style={{ width: '100%', background: 'linear-gradient(135deg, #2C5A2E, #1c3a1d)', color: '#fff', border: 'none', borderRadius: 14, padding: 16, fontWeight: 800, fontSize: 16, cursor: 'pointer', fontFamily: FONT_TESTO, marginBottom: 8 }}>✓ Aggiungi e vai al carrello</button>
+                <button onClick={() => setStato('pronto')} style={{ width: '100%', background: 'transparent', color: C.grigio, border: 'none', padding: 10, fontWeight: 600, cursor: 'pointer', fontFamily: FONT_TESTO }}>🎤 Ridì l'ordine</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [utente, setUtenteRaw] = useState(() => {
     try {
@@ -1134,6 +1350,9 @@ export default function App() {
   const [bibitaOmaggioId2, setBibitaOmaggioId2] = useState(null); // seconda bibita (ruota potenziata)
   const [prodottoAggiunte, setProdottoAggiunte] = useState(null); // prodotto di cui scegliere le aggiunte (apre overlay)
   const [mostraOrari, setMostraOrari] = useState(false); // overlay orari di apertura
+  const [traffico, setTraffico] = useState(null); // livello traffico dalla cucina (verde/giallo/rosso)
+  const [mostraVocale, setMostraVocale] = useState(false); // overlay ordine vocale
+  const [traffico, setTraffico] = useState(null); // livello traffico/attesa impostato dalla cucina
   const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
   const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
@@ -1181,6 +1400,19 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
 
+  // Carica il livello di traffico/attesa impostato dalla cucina (si aggiorna ogni 60s)
+  useEffect(() => {
+    const caricaTraffico = async () => {
+      try {
+        const { data } = await supabase.from('stato_locale').select('traffico').eq('id', 1).single();
+        if (data?.traffico) setTraffico(data.traffico);
+      } catch (e) {}
+    };
+    caricaTraffico();
+    const t = setInterval(caricaTraffico, 60000);
+    return () => clearInterval(t);
+  }, []);
+
   // Rotazione continua della rotella premi (animazione via JS, sicura su React Native Web)
   const apertura = statoApertura(ora); // { aperto, prossimaApertura }
 
@@ -1202,6 +1434,22 @@ export default function App() {
       if (ex) return prev.map(c => c.cartKey === key ? { ...c, qty: c.qty + 1 } : c);
       return [...prev, { ...item, cartKey: key, qty: 1, aggiunte: [], integrale: false, prezzoBase: item.price }];
     });
+  };
+
+  // Conferma da ordine vocale: aggiunge i prodotti riconosciuti al carrello e va al checkout
+  const confermaVocale = (prodottiTrovati) => {
+    setCart(prev => {
+      const nuovo = [...prev];
+      prodottiTrovati.forEach(({ prodotto, qty }) => {
+        const key = String(prodotto.id);
+        const ex = nuovo.find(c => c.cartKey === key);
+        if (ex) ex.qty += qty;
+        else nuovo.push({ ...prodotto, cartKey: key, qty, aggiunte: [], integrale: false, prezzoBase: prodotto.price });
+      });
+      return nuovo;
+    });
+    setMostraVocale(false);
+    setTab('cart');
   };
 
   // Aggiunge un prodotto con aggiunte/integrale scelte (dal pannello aggiunte)
@@ -1264,7 +1512,7 @@ export default function App() {
   let scontoPremio = 0;
   let premioLabel = '';
   const tuttiProd = Object.values(MENU).flat();
-  if (utente.premio === 'sconto10' && cartTotalDopoCombo > 0) {
+  if ((utente.premio === 'sconto10' || utente.premio === 'compleanno') && cartTotalDopoCombo > 0) {
     scontoPremio = cartTotalDopoCombo * 0.10;
     premioLabel = 'Sconto 10% (premio ruota)';
   } else if (utente.premio === 'sconto15' && cartTotalDopoCombo > 0) {
@@ -1302,6 +1550,7 @@ export default function App() {
     righeRiepilogo.push(`Subtotale: € ${cartTotalRaw.toFixed(2)}`);
     if (scontoCombo > 0) righeRiepilogo.push(`Sconto combo (bibite omaggio): -€ ${scontoCombo.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'sconto10') righeRiepilogo.push(`Sconto 10% (premio ruota): -€ ${scontoPremio.toFixed(2)}`);
+    if (scontoPremio > 0 && utente.premio === 'compleanno') righeRiepilogo.push(`Sconto 10% compleanno: -€ ${scontoPremio.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'sconto15') righeRiepilogo.push(`Sconto 15% (premio ruota potenziata): -€ ${scontoPremio.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'bibita') righeRiepilogo.push(`Bibita OMAGGIO (premio ruota): ${nomeBibitaOmaggio} -€ ${scontoPremio.toFixed(2)}`);
     if (scontoPremio > 0 && utente.premio === 'bibita2') righeRiepilogo.push(`2 bibite OMAGGIO (ruota potenziata): ${[nomeBibitaOmaggio, nomeBibitaOmaggio2].filter(Boolean).join(' + ')} -€ ${scontoPremio.toFixed(2)}`);
@@ -1383,6 +1632,17 @@ export default function App() {
         <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
       </TouchableOpacity>
 
+      {/* Pallino tempo di attesa (impostato dalla cucina) */}
+      {traffico && TRAFFICO_INFO[traffico] && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 14, padding: 12, marginTop: 10, borderWidth: 1, borderColor: C.cremaScuro, borderLeftWidth: 5, borderLeftColor: TRAFFICO_INFO[traffico].color, boxShadow: '0 3px 10px rgba(140,90,20,0.07)' }}>
+          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: TRAFFICO_INFO[traffico].color }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: C.marrone }}>Attesa stimata: {TRAFFICO_INFO[traffico].tempo}</Text>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>{TRAFFICO_INFO[traffico].label}</Text>
+          </View>
+        </View>
+      )}
+
       {/* HERO con braci e spicchio */}
       <View style={[S.hero, { background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)' }]}>
         <View style={[S.ember, { width: 60, height: 60, top: -10, right: 30, opacity: 0.5, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
@@ -1400,11 +1660,32 @@ export default function App() {
         <Text style={S.heroTag}>La nostra passione, la tua pizza</Text>
         <Text style={S.heroBig}>Ordina ora</Text>
         <Text style={S.heroSub}>Domicilio o asporto</Text>
-        <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
-          <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
-          <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
+            <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
+            <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity
+            activeOpacity={0.85}
+            onPress={() => setMostraVocale(true)}
+            style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(232,184,75,0.5)' }}
+          >
+            <Text style={{ fontSize: 24 }}>🎤</Text>
+          </TouchableOpacity>
+        </View>
       </View>
+
+      {/* Stato attesa cucina (pallino traffico impostato dalla cucina) */}
+      {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 4, borderWidth: 1, borderColor: C.cremaScuro, borderLeftWidth: 5, borderLeftColor: TRAFFICO_INFO[traffico].color, boxShadow: '0 4px 12px rgba(140,90,20,0.08)' }}>
+          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: TRAFFICO_INFO[traffico].color, boxShadow: `0 0 10px ${TRAFFICO_INFO[traffico].color}` }} />
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, fontWeight: '700', letterSpacing: 0.5 }}>TEMPO DI ATTESA STIMATO</Text>
+            <Text style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.marrone }}>{TRAFFICO_INFO[traffico].tempo}</Text>
+          </View>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: TRAFFICO_INFO[traffico].color, fontWeight: '800' }}>{TRAFFICO_INFO[traffico].label}</Text>
+        </View>
+      )}
 
       {/* OFFERTE */}
       <SecLabel testo="Offerte" />
@@ -1459,6 +1740,47 @@ export default function App() {
       </View>
 
       {/* INFO */}
+      {/* DAL FORNO - video */}
+      <SecLabel testo="🔥 Dal forno" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+        {VIDEO_DAL_FORNO.map((video, i) => {
+          const isTT = video.piattaforma === 'tiktok';
+          return (
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.85}
+              onPress={() => window.open(video.url, '_blank')}
+              style={{ width: 150, height: 230, borderRadius: 18, overflow: 'hidden', position: 'relative' }}
+            >
+              <View style={{
+                position: 'absolute', inset: 0,
+                background: isTT
+                  ? 'linear-gradient(160deg, #2b2b2b 0%, #000 100%)'
+                  : 'linear-gradient(160deg, #FEDA75 0%, #FA7E1E 25%, #D62976 60%, #962FBF 100%)',
+                backgroundColor: isTT ? '#000' : '#D62976',
+              }} />
+              {/* pizza decorativa */}
+              <Text style={{ position: 'absolute', right: -10, top: -6, fontSize: 70, opacity: 0.18 }}>🍕</Text>
+              {/* play */}
+              <View style={{ position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center' }}>
+                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}>
+                  <Text style={{ fontSize: 20, marginLeft: 3 }}>▶️</Text>
+                </View>
+              </View>
+              {/* etichetta piattaforma */}
+              <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', fontFamily: FONT_TESTO }}>{isTT ? 'TikTok' : 'Instagram'}</Text>
+              </View>
+              {/* titolo */}
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, background: 'linear-gradient(0deg, rgba(0,0,0,0.7), transparent)' }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: FONT_TITOLO }}>{video.titolo}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: FONT_TESTO }}>Guarda il video →</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
       <SecLabel testo="Dove trovarci" />
       <View style={S.tilesRow}>
         <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
@@ -1680,22 +2002,27 @@ export default function App() {
     const [pIndirizzo, setPIndirizzo] = useState(utente.indirizzo || '');
     const [pPagamento, setPPagamento] = useState(utente.pagamento || 'contanti');
     const [pAllergie, setPAllergie] = useState(utente.allergie || '');
+    const [pCompleanno, setPCompleanno] = useState(utente.compleanno || ''); // formato AAAA-MM-GG
     const [salvato, setSalvato] = useState(false);
     const [salvando, setSalvando] = useState(false);
+    const compleannoBloccato = !!(utente.compleanno && utente.compleanno.trim()); // già impostato = non modificabile
 
     const salvaProfilo = async () => {
       setSalvando(true);
-      const { error } = await supabase.from('clienti').update({
+      const datiUpdate = {
         nome: pNome.trim(),
         cognome: pCognome.trim(),
         email: pEmail.trim(),
         indirizzo: pIndirizzo.trim(),
         pagamento: pPagamento,
         allergie: pAllergie.trim(),
-      }).eq('telefono', utente.telefono);
+      };
+      // Il compleanno si salva solo la prima volta (poi è bloccato)
+      if (!compleannoBloccato && pCompleanno) datiUpdate.compleanno = pCompleanno;
+      const { error } = await supabase.from('clienti').update(datiUpdate).eq('telefono', utente.telefono);
       setSalvando(false);
       if (error) { alert('Errore: ' + error.message); return; }
-      setUtente({ ...utente, nome: pNome.trim(), cognome: pCognome.trim(), email: pEmail.trim(), indirizzo: pIndirizzo.trim(), pagamento: pPagamento, allergie: pAllergie.trim() });
+      setUtente({ ...utente, nome: pNome.trim(), cognome: pCognome.trim(), email: pEmail.trim(), indirizzo: pIndirizzo.trim(), pagamento: pPagamento, allergie: pAllergie.trim(), compleanno: (!compleannoBloccato && pCompleanno) ? pCompleanno : utente.compleanno });
       setSalvato(true);
       setTimeout(() => setSalvato(false), 2000);
     };
@@ -1725,6 +2052,7 @@ export default function App() {
                 {utente.premio === 'bibita' ? 'Una bibita in OMAGGIO sul prossimo ordine'
                   : utente.premio === 'bibita2' ? '2 bibite in OMAGGIO sul prossimo ordine'
                   : utente.premio === 'sconto15' ? 'SCONTO 15% sul prossimo ordine'
+                  : utente.premio === 'compleanno' ? '🎂 SCONTO 10% di compleanno sul prossimo ordine!'
                   : 'SCONTO 10% sul prossimo ordine'}
               </Text>
               <Text style={{ color: 'white', fontSize: 13, fontWeight: '800', marginTop: 8 }}>
@@ -1761,6 +2089,23 @@ export default function App() {
         <View style={S.formBox}>
           <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE</Text>
           <textarea style={{ ...inputStyleP, minHeight: 70, resize: 'vertical' }} value={pAllergie} onChange={(e) => setPAllergie(e.target.value)} placeholder="Es. glutine, lattosio, frutta secca..." />
+        </View>
+
+        <View style={[S.formBox, { borderWidth: 1, borderColor: '#F0C868' }]}>
+          <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO</Text>
+          {compleannoBloccato ? (
+            <View>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.marrone, fontWeight: '700', paddingVertical: 8 }}>
+                {(() => { const [a,m,g] = utente.compleanno.split('-'); return `${g}/${m}/${a}`; })()}
+              </Text>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>🔒 La data di compleanno non può essere modificata.</Text>
+            </View>
+          ) : (
+            <View>
+              <input style={inputStyleP} value={pCompleanno} onChange={(e) => setPCompleanno(e.target.value)} type="date" />
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.oro, marginTop: 6, fontWeight: '700' }}>🎁 Il giorno del tuo compleanno avrai uno sconto del 10%! (impostabile una sola volta)</Text>
+            </View>
+          )}
         </View>
 
         <TouchableOpacity style={[S.checkoutBtn, { backgroundColor: salvato ? '#2C5A2E' : C.rosso }]} onPress={salvaProfilo} disabled={salvando}>
@@ -1944,6 +2289,9 @@ export default function App() {
           onConferma={(prod, agg, integrale) => { aggiungiConAggiunte(prod, agg, integrale); setProdottoAggiunte(null); }}
           onChiudi={() => setProdottoAggiunte(null)}
         />
+      )}
+      {mostraVocale && (
+        <OrdineVocale onChiudi={() => setMostraVocale(false)} onConferma={confermaVocale} />
       )}
       {mostraOrari && (
         <div

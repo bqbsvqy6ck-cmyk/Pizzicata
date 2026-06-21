@@ -29,13 +29,6 @@ const TRAFFICO_INFO = {
   rosso:  { label: 'Traffico alto',   tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
 };
 
-// Livelli di traffico/attesa che la cucina può impostare
-const TRAFFICO = {
-  verde:  { label: 'Poco traffico',  tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
-  giallo: { label: 'Traffico medio', tempo: '30-40 min', color: '#E8A800', emoji: '🟡' },
-  rosso:  { label: 'Molto traffico', tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
-};
-
 const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
 
 export default function Cucina() {
@@ -47,7 +40,6 @@ export default function Cucina() {
   const [suonoAttivo, setSuonoAttivo] = useState(false);
   const [nuovoArrivato, setNuovoArrivato] = useState(false); // per il lampeggio visivo
   const [traffico, setTraffico] = useState('verde'); // livello traffico locale
-  const [traffico, setTraffico] = useState('verde'); // verde/giallo/rosso - mole di lavoro
   const idsNuoviPrec = useRef(null); // set degli id "nuovi" al giro precedente
   const audioCtxRef = useRef(null);
 
@@ -128,23 +120,6 @@ export default function Cucina() {
       .update({ traffico: livello, aggiornato_il: new Date().toISOString() })
       .eq('id', 1);
     if (error) setErrMsg('Errore traffico: ' + error.message);
-  };
-
-  // Carica il livello di traffico attuale dal database
-  const caricaTraffico = async () => {
-    const { data } = await supabase.from('impostazioni').select('valore').eq('id', 'traffico').single();
-    if (data?.valore) setTraffico(data.valore);
-  };
-  useEffect(() => {
-    caricaTraffico();
-    const t = setInterval(caricaTraffico, 30000);
-    return () => clearInterval(t);
-  }, []);
-
-  // Imposta un nuovo livello di traffico (lo vedono anche i clienti)
-  const cambiaTraffico = async (livello) => {
-    setTraffico(livello); // aggiorna subito a schermo
-    await supabase.from('impostazioni').update({ valore: livello, updated_at: new Date().toISOString() }).eq('id', 'traffico');
   };
 
   // Conta gli ordini ancora da accettare (stato 'nuovo')
@@ -276,25 +251,6 @@ export default function Cucina() {
         )}
         {errMsg ? <Text style={S.errMsg}>{errMsg}</Text> : null}
 
-        {/* Selettore traffico / tempo di attesa (lo vedono i clienti) */}
-        <View style={{ marginTop: 12, backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 10 }}>
-          <Text style={{ fontFamily: FONT_TESTO, color: 'rgba(242,232,213,0.7)', fontSize: 10, fontWeight: '800', letterSpacing: 1, marginBottom: 8 }}>⏱️ TEMPO DI ATTESA (visibile ai clienti)</Text>
-          <View style={{ flexDirection: 'row', gap: 8 }}>
-            {Object.keys(TRAFFICO).map(liv => {
-              const t = TRAFFICO[liv];
-              const attivo = traffico === liv;
-              return (
-                <TouchableOpacity
-                  key={liv}
-                  onPress={() => cambiaTraffico(liv)}
-                  style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 10, backgroundColor: attivo ? t.color : 'rgba(255,255,255,0.08)', borderWidth: attivo ? 0 : 1, borderColor: 'rgba(255,255,255,0.15)' }}
-                >
-                  <Text style={{ fontSize: 18 }}>{t.emoji}</Text>
-                  <Text style={{ fontFamily: FONT_TESTO, color: attivo ? '#fff' : 'rgba(242,232,213,0.7)', fontSize: 11, fontWeight: '800', marginTop: 2 }}>{t.tempo}</Text>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
         </View>
       </View>
 

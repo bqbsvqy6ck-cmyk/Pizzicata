@@ -1352,7 +1352,6 @@ export default function App() {
   const [mostraOrari, setMostraOrari] = useState(false); // overlay orari di apertura
   const [traffico, setTraffico] = useState(null); // livello traffico dalla cucina (verde/giallo/rosso)
   const [mostraVocale, setMostraVocale] = useState(false); // overlay ordine vocale
-  const [traffico, setTraffico] = useState(null); // livello traffico/attesa impostato dalla cucina
   const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
   const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€

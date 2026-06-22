@@ -28,8 +28,8 @@ const VIDEO_DAL_FORNO = [
 
 // Livelli di traffico mostrati al cliente (impostati dalla cucina)
 const TRAFFICO_INFO = {
-  verde:  { label: 'Tempi regolari', tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
-  giallo: { label: 'Un po\' di attesa', tempo: '30-40 min', color: '#E8A317', emoji: '🟡' },
+  verde:  { label: 'Tempi regolari', tempo: '20-25 min', color: '#27AE60', emoji: '🟢' },
+  giallo: { label: 'Un po\' di attesa', tempo: '35-45 min', color: '#E8A317', emoji: '🟡' },
   rosso:  { label: 'Molto richiesti', tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
 };
 
@@ -342,6 +342,201 @@ const STATO_INFO = {
 };
 const STATO_STEPS = ['nuovo', 'in_lavorazione', 'pronto', 'consegnato'];
 
+// ═══════════════════════════════════════════════════════════
+//  ANALISI ORDINE VOCALE — capisce prodotti, aggiunte, orario,
+//  domicilio/asporto, impasto integrale e note dal testo parlato.
+// ═══════════════════════════════════════════════════════════
+const analizzaOrdineVocale = (testoParlato) => {
+  let testo = normalizza(testoParlato);
+  const risultato = {
+    prodotti: [],        // [{ prodotto, qty, aggiunte:[], integrale:bool }]
+    tipo: null,          // 'domicilio' | 'asporto' | null
+    orario: null,        // 'HH:MM' | null
+    note: '',            // testo libero
+    testoOriginale: testoParlato,
+  };
+
+  // ---- 1. DOMICILIO / ASPORTO ----
+  if (/\b(domicilio|a casa|consegna|consegnare|consegnata|consegnato)\b/.test(testo)) {
+    risultato.tipo = 'domicilio';
+    testo = testo.replace(/\b(a domicilio|domicilio|a casa|con consegna|consegna a casa)\b/g, ' ');
+  } else if (/\b(asporto|ritiro|ritirare|da ritirare|porto via|portar via|prendo io|passo io|vengo a prendere)\b/.test(testo)) {
+    risultato.tipo = 'asporto';
+    testo = testo.replace(/\b(d asporto|da asporto|asporto|da ritirare|ritiro|porto via|portar via)\b/g, ' ');
+  }
+
+  // ---- 2. ORARIO ----
+  // 2a. relativo: "tra un'ora", "tra un'ora e mezza", "tra 30 minuti", "tra due ore"
+  const oraAdesso = new Date();
+  let minutiTarget = null;
+  const matchTraOre = testo.match(/tra (un|uno|una|due|tre|\d+) ?or[ae]( e mezza| e mezzo| e un quarto)?/);
+  const matchTraMin = testo.match(/tra (\d+|dieci|quindici|venti|trenta|quaranta|quarantacinque|cinquanta) ?minut/);
+  if (matchTraOre) {
+    let ore = NUMERI_PAROLA[matchTraOre[1]] || parseInt(matchTraOre[1]) || 1;
+    let minAgg = ore * 60;
+    if (matchTraOre[2]) {
+      if (matchTraOre[2].includes('mezz')) minAgg += 30;
+      else if (matchTraOre[2].includes('quarto')) minAgg += 15;
+    }
+    minutiTarget = oraAdesso.getHours() * 60 + oraAdesso.getMinutes() + minAgg;
+    testo = testo.replace(matchTraOre[0], ' ');
+  } else if (matchTraMin) {
+    const mappaMin = { dieci: 10, quindici: 15, venti: 20, trenta: 30, quaranta: 40, quarantacinque: 45, cinquanta: 50 };
+    let m = mappaMin[matchTraMin[1]] || parseInt(matchTraMin[1]) || 0;
+    minutiTarget = oraAdesso.getHours() * 60 + oraAdesso.getMinutes() + m;
+    testo = testo.replace(matchTraMin[0], ' ');
+  } else {
+    // 2b. assoluto: "alle 20", "alle 20:30"->"20 30", "alle 8 e mezza", "alle 21 e 15", "per le 21"
+    let matchOra = testo.match(/(?:alle|all|per le|per l|verso le|verso l)\s*(\d{1,2})\s*(?::|\.)?\s*(\d{2})\b/); // formato con minuti numerici (20 30 / 20:30)
+    let oraDettaH = null, oraDettaM = 0;
+    if (matchOra) {
+      oraDettaH = parseInt(matchOra[1]);
+      oraDettaM = parseInt(matchOra[2]) || 0;
+      testo = testo.replace(matchOra[0], ' ');
+    } else {
+      // formato con "e mezza / e un quarto / e tre quarti" oppure ora secca
+      const matchOra2 = testo.match(/(?:alle|all|per le|per l|verso le|verso l)\s*(\d{1,2})(?:\s+e\s+(mezza|mezzo|un quarto|tre quarti|\d{1,2}))?/);
+      if (matchOra2) {
+        oraDettaH = parseInt(matchOra2[1]);
+        if (matchOra2[2]) {
+          if (matchOra2[2] === 'mezza' || matchOra2[2] === 'mezzo') oraDettaM = 30;
+          else if (matchOra2[2] === 'un quarto') oraDettaM = 15;
+          else if (matchOra2[2] === 'tre quarti') oraDettaM = 45;
+          else oraDettaM = parseInt(matchOra2[2]) || 0;
+        }
+        testo = testo.replace(matchOra2[0], ' ');
+      }
+    }
+    if (oraDettaH !== null) {
+      let h = oraDettaH;
+      if (h >= 1 && h <= 11 && oraAdesso.getHours() >= 12) h += 12;
+      minutiTarget = h * 60 + oraDettaM;
+    }
+  }
+  if (minutiTarget !== null) {
+    minutiTarget = ((minutiTarget % 1440) + 1440) % 1440; // resta nelle 24h
+    const hh = String(Math.floor(minutiTarget / 60)).padStart(2, '0');
+    const mm = String(minutiTarget % 60).padStart(2, '0');
+    risultato.orario = `${hh}:${mm}`;
+  }
+
+  // ---- 3. NOTE (intolleranze e preferenze) ----
+  const noteTrovate = [];
+  // intolleranze
+  const matchIntoll = testo.match(/(intollerante?|allergico|allergica|allergia) (a |al |alla |ai |agli |alle )?([a-z]+)/);
+  if (matchIntoll) {
+    noteTrovate.push(matchIntoll[0]);
+    testo = testo.replace(matchIntoll[0], ' ');
+  }
+  // preferenze di cottura/taglio
+  const frasiNota = [
+    'tagliata', 'tagliato', 'tagliate', 'non tagliata',
+    'ben cotta', 'ben cotto', 'ben cotte', 'molto cotta', 'cottura alta',
+    'poco cotta', 'poco cotto', 'morbida', 'morbido',
+    'non bruciata', 'non bruciato', 'bruciata', 'bruciacchiata',
+    'senza basilico', 'senza origano', 'senza sale', 'poco sale', 'poco olio', 'senza olio',
+    'ben calda', 'molto calda', 'a parte',
+  ];
+  frasiNota.forEach(f => {
+    if (testo.includes(' ' + f + ' ') || testo.includes(' ' + f) || testo.endsWith(f)) {
+      noteTrovate.push(f);
+      testo = testo.replace(f, ' ');
+    }
+  });
+  risultato.note = noteTrovate.join(', ');
+
+  // ---- 4. PRODOTTI + AGGIUNTE ----
+  // divido il testo in "segmenti" per prodotto, separati da "e", "poi", "più una", virgole
+  // ma prima identifico i prodotti uno per uno con le loro aggiunte vicine.
+  // Strategia: trovo le posizioni dei prodotti nel testo, e per ognuno guardo le aggiunte
+  // che lo seguono (fino al prossimo prodotto).
+  const prodottiOrdinati = [...TUTTI_PRODOTTI].sort((a, b) => normalizza(b.name).length - normalizza(a.name).length);
+
+  // genera varianti plurale di un nome
+  const variantiDi = (nomeNorm) => {
+    const v = [nomeNorm];
+    if (nomeNorm.endsWith('a')) v.push(nomeNorm.slice(0, -1) + 'e');
+    if (nomeNorm.endsWith('o')) v.push(nomeNorm.slice(0, -1) + 'i');
+    if (nomeNorm.endsWith('e')) v.push(nomeNorm.slice(0, -1) + 'i');
+    return v;
+  };
+
+  // trova tutte le occorrenze di prodotti con posizione
+  const occorrenze = [];
+  let testoMarcato = ' ' + testo + ' ';
+  prodottiOrdinati.forEach(prod => {
+    const nomeNorm = normalizza(prod.name);
+    if (nomeNorm.length < 3) return;
+    for (const v of variantiDi(nomeNorm)) {
+      let pos = testoMarcato.indexOf(' ' + v + ' ');
+      if (pos !== -1) {
+        // Se subito prima c'è "più/con/aggiungi/e", questo è probabilmente un'AGGIUNTA
+        // al prodotto precedente, non un nuovo prodotto. Lo saltiamo qui (lo prenderà
+        // la ricerca aggiunte nel segmento). Eccezione: se è il primo elemento, è un prodotto.
+        const contestoPrima = testoMarcato.slice(Math.max(0, pos - 12), pos).trim();
+        const preceduto = /\b(piu|con|aggiungi|aggiunta|e|ed)$/.test(contestoPrima);
+        // è anche un'aggiunta valida? (esiste con lo stesso nome nelle AGGIUNTE)
+        const esisteComeAggiunta = AGGIUNTE.some(a => {
+          const an = normalizza(a.nome);
+          return an === nomeNorm || an.includes(nomeNorm) || nomeNorm.includes(an);
+        });
+        if (preceduto && esisteComeAggiunta && occorrenze.length > 0) {
+          // NON è un prodotto nuovo: lascia il testo così, lo troverà la ricerca aggiunte
+          break;
+        }
+        occorrenze.push({ prod, pos, lunghezza: v.length, variante: v });
+        testoMarcato = testoMarcato.slice(0, pos) + ' '.repeat(v.length + 2) + testoMarcato.slice(pos + v.length + 2);
+        break;
+      }
+    }
+  });
+  // ordina per posizione nel testo
+  occorrenze.sort((a, b) => a.pos - b.pos);
+
+  // per ogni prodotto, estrai qty (numero prima) e aggiunte (ingredienti tra questo prodotto e il prossimo)
+  const testoPerSegmenti = ' ' + testo + ' ';
+  occorrenze.forEach((occ, i) => {
+    // qty: numero appena prima del nome
+    const prima = testoPerSegmenti.slice(0, occ.pos).trim().split(' ');
+    const ultimaParola = prima[prima.length - 1] || '';
+    let qty = 1;
+    if (/^\d+$/.test(ultimaParola)) qty = parseInt(ultimaParola);
+    else if (NUMERI_PAROLA[ultimaParola]) qty = NUMERI_PAROLA[ultimaParola];
+
+    // segmento di testo dopo questo prodotto fino al prossimo (per le aggiunte)
+    const inizioSegmento = occ.pos + occ.lunghezza;
+    const fineSegmento = (i + 1 < occorrenze.length) ? occorrenze[i + 1].pos : testoPerSegmenti.length;
+    const segmento = testoPerSegmenti.slice(inizioSegmento, fineSegmento);
+
+    // cerca aggiunte nel segmento (sia "più X" che "con X" che solo "X")
+    const aggiunteTrovate = [];
+    let integrale = false;
+    if (/\bintegrale\b/.test(segmento) || /\bintegrale\b/.test(testoPerSegmenti.slice(Math.max(0, occ.pos - 15), occ.pos))) {
+      integrale = true;
+    }
+    AGGIUNTE.forEach(agg => {
+      const aggNorm = normalizza(agg.nome);
+      // gestisce nomi abbreviati comuni: gorgonzola/gorgo, prosciutto cotto/cotto
+      const variantiAgg = [aggNorm];
+      if (aggNorm === 'gorgonzola') variantiAgg.push('gorgo');
+      if (aggNorm === 'prosciutto cotto') variantiAgg.push('cotto', 'prosciutto');
+      if (aggNorm === 'rinforzo mozzarella') variantiAgg.push('mozzarella', 'rinforzo mozzarella');
+      if (aggNorm === 'salamino') variantiAgg.push('salame', 'salamino');
+      for (const va of variantiAgg) {
+        if (segmento.includes(' ' + va + ' ') || segmento.includes(' ' + va) || segmento.endsWith(va)) {
+          if (!aggiunteTrovate.find(a => a.nome === agg.nome)) aggiunteTrovate.push(agg);
+          break;
+        }
+      }
+    });
+
+    risultato.prodotti.push({ prodotto: occ.prod, qty, aggiunte: aggiunteTrovate, integrale });
+  });
+
+  return risultato;
+};
+
+
 const ORARI_SERA_FULL = ['18:30', '19:00', '19:30', '20:00', '20:30', '21:00', '21:30', '22:00', '22:30', '22:45'];
 const ORARI_PRANZO_FULL = ['12:30', '13:00', '13:30', '14:00'];
 const ORARI_PANE = ['Mattina (9:00-12:00)', 'Sera (18:15-22:45)'];
@@ -519,7 +714,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, setCombo, ordered, setOrdered, setTab, handleOrder, utente, precompilaVocale, setPrecompilaVocale }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
@@ -538,6 +733,26 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const [minCustom, setMinCustom] = useState('00');
   const [manciaCustomAttiva, setManciaCustomAttiva] = useState(false);
   const [manciaCustomVal, setManciaCustomVal] = useState('');
+
+  // Applica i dati arrivati da un ordine vocale (orario, tipo, note)
+  useEffect(() => {
+    if (!precompilaVocale) return;
+    if (precompilaVocale.tipo) setTipoOrdine(precompilaVocale.tipo);
+    if (precompilaVocale.note) {
+      setNote(prev => {
+        const base = prev && prev.trim() ? prev.trim() + '. ' : '';
+        return base + precompilaVocale.note;
+      });
+    }
+    if (precompilaVocale.orario) {
+      // imposta orario custom con quello detto a voce
+      const [h, m] = precompilaVocale.orario.split(':');
+      setOraCustom(String(parseInt(h)));
+      setMinCustom(m);
+      setOrario('custom');
+    }
+    setPrecompilaVocale(null); // consuma una sola volta
+  }, [precompilaVocale]);
 
   useEffect(() => {
     const nuovi = getOrariDisponibili(giornoSelezionato === 0 && !haPane);
@@ -1220,7 +1435,7 @@ function SecLabel({ testo }) {
 function OrdineVocale({ onChiudi, onConferma }) {
   const [stato, setStato] = useState('pronto'); // pronto | ascolto | risultato | errore
   const [testoParlato, setTestoParlato] = useState('');
-  const [prodottiTrovati, setProdottiTrovati] = useState([]);
+  const [analisi, setAnalisi] = useState(null); // risultato completo
   const [messaggioErrore, setMessaggioErrore] = useState('');
   const recognitionRef = useRef(null);
 
@@ -1238,8 +1453,8 @@ function OrdineVocale({ onChiudi, onConferma }) {
     recognition.onresult = (event) => {
       const testo = event.results[0][0].transcript;
       setTestoParlato(testo);
-      const trovati = cercaProdottiNelTesto(testo);
-      setProdottiTrovati(trovati);
+      const ris = analizzaOrdineVocale(testo);
+      setAnalisi(ris);
       setStato('risultato');
     };
     recognition.onerror = (event) => {
@@ -1249,12 +1464,13 @@ function OrdineVocale({ onChiudi, onConferma }) {
     recognition.onend = () => { if (stato === 'ascolto') setStato(s => s === 'ascolto' ? 'pronto' : s); };
     recognitionRef.current = recognition;
     setTestoParlato('');
-    setProdottiTrovati([]);
+    setAnalisi(null);
     setStato('ascolto');
     recognition.start();
   };
 
-  const totaleStimato = prodottiTrovati.reduce((s, t) => s + t.prodotto.price * t.qty, 0);
+  const prezzoConAggiunte = (p) => (p.prodotto.price + (p.aggiunte || []).reduce((s, a) => s + a.prezzo, 0) + (p.integrale ? 1 : 0)) * p.qty;
+  const totaleStimato = analisi ? analisi.prodotti.reduce((s, p) => s + prezzoConAggiunte(p), 0) : 0;
 
   return (
     <div onClick={onChiudi} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.65)', zIndex: 99999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
@@ -1295,26 +1511,42 @@ function OrdineVocale({ onChiudi, onConferma }) {
               <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, fontStyle: 'italic', marginTop: 4 }}>"{testoParlato}"</div>
             </div>
 
-            {prodottiTrovati.length === 0 ? (
+            {(!analisi || analisi.prodotti.length === 0) ? (
               <div style={{ textAlign: 'center', padding: '10px 0 20px' }}>
-                <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, marginBottom: 16 }}>Non ho riconosciuto prodotti del menù. Riprova dicendo il nome esatto di una pizza.</div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.marrone, marginBottom: 16 }}>Non ho riconosciuto prodotti del menù. Riprova dicendo il nome di una pizza, dolce, bibita...</div>
                 <button onClick={() => setStato('pronto')} style={{ background: C.rosso, color: '#fff', border: 'none', borderRadius: 12, padding: '12px 24px', fontWeight: 700, cursor: 'pointer', fontFamily: FONT_TESTO }}>🎤 Riprova</button>
               </div>
             ) : (
               <div>
                 <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginBottom: 8, fontWeight: 700 }}>Aggiungo al carrello:</div>
-                {prodottiTrovati.map((t, i) => (
-                  <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #E8D5B0' }}>
-                    <span style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.marrone, fontWeight: 600 }}>{t.qty}× {t.prodotto.name}</span>
-                    <span style={{ fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: 900, color: C.rosso }}>€ {(t.prodotto.price * t.qty).toFixed(2)}</span>
+                {analisi.prodotti.map((p, i) => (
+                  <div key={i} style={{ background: '#fff', borderRadius: 10, padding: 12, marginBottom: 8, border: '1px solid #E8D5B0' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.marrone, fontWeight: 700 }}>{p.qty}× {p.prodotto.name}</span>
+                      <span style={{ fontFamily: FONT_TITOLO, fontSize: 15, fontWeight: 900, color: C.rosso }}>€ {prezzoConAggiunte(p).toFixed(2)}</span>
+                    </div>
+                    {p.integrale && <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.oro, marginTop: 3 }}>+ Impasto integrale</div>}
+                    {p.aggiunte && p.aggiunte.length > 0 && (
+                      <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.oro, marginTop: 3 }}>+ {p.aggiunte.map(a => a.nome).join(', ')}</div>
+                    )}
                   </div>
                 ))}
+
+                {/* riepilogo opzioni capite */}
+                {(analisi.tipo || analisi.orario || analisi.note) && (
+                  <div style={{ background: '#FBF4E6', borderRadius: 10, padding: 12, marginTop: 4, marginBottom: 10, border: '1px solid #EBDCC0' }}>
+                    {analisi.tipo && <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.marrone, marginBottom: 3 }}>{analisi.tipo === 'domicilio' ? '🛵 Consegna a domicilio' : '🥡 Asporto'}</div>}
+                    {analisi.orario && <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.marrone, marginBottom: 3 }}>🕐 Orario: {analisi.orario}</div>}
+                    {analisi.note && <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.marrone }}>📝 Note: {analisi.note}</div>}
+                  </div>
+                )}
+
                 <div style={{ display: 'flex', justifyContent: 'space-between', padding: '10px 4px', marginBottom: 12 }}>
                   <span style={{ fontFamily: FONT_TESTO, fontWeight: 800, color: C.marrone }}>Totale stimato</span>
                   <span style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: 900, color: C.rosso }}>€ {totaleStimato.toFixed(2)}</span>
                 </div>
-                <div style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, textAlign: 'center', marginBottom: 14 }}>Potrai controllare e modificare tutto prima di confermare</div>
-                <button onClick={() => onConferma(prodottiTrovati)} style={{ width: '100%', background: 'linear-gradient(135deg, #2C5A2E, #1c3a1d)', color: '#fff', border: 'none', borderRadius: 14, padding: 16, fontWeight: 800, fontSize: 16, cursor: 'pointer', fontFamily: FONT_TESTO, marginBottom: 8 }}>✓ Aggiungi e vai al carrello</button>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, textAlign: 'center', marginBottom: 14 }}>Controlla e modifica tutto prima di confermare l'ordine</div>
+                <button onClick={() => onConferma(analisi)} style={{ width: '100%', background: 'linear-gradient(135deg, #2C5A2E, #1c3a1d)', color: '#fff', border: 'none', borderRadius: 14, padding: 16, fontWeight: 800, fontSize: 16, cursor: 'pointer', fontFamily: FONT_TESTO, marginBottom: 8 }}>✓ Aggiungi e vai al carrello</button>
                 <button onClick={() => setStato('pronto')} style={{ width: '100%', background: 'transparent', color: C.grigio, border: 'none', padding: 10, fontWeight: 600, cursor: 'pointer', fontFamily: FONT_TESTO }}>🎤 Ridì l'ordine</button>
               </div>
             )}
@@ -1352,6 +1584,7 @@ export default function App() {
   const [mostraOrari, setMostraOrari] = useState(false); // overlay orari di apertura
   const [traffico, setTraffico] = useState(null); // livello traffico dalla cucina (verde/giallo/rosso)
   const [mostraVocale, setMostraVocale] = useState(false); // overlay ordine vocale
+  const [precompilaVocale, setPrecompilaVocale] = useState(null); // dati da ordine vocale per il carrello
   const [mancia, setMancia] = useState(0); // mancia al locale scelta al checkout
   const [manciaConfermata, setManciaConfermata] = useState(false); // spunta di conferma mancia
   const [ruotaVisibile, setRuotaVisibile] = useState(false); // mostra la ruota dopo ordine >=15€
@@ -1435,17 +1668,32 @@ export default function App() {
     });
   };
 
-  // Conferma da ordine vocale: aggiunge i prodotti riconosciuti al carrello e va al checkout
-  const confermaVocale = (prodottiTrovati) => {
+  // Conferma da ordine vocale: aggiunge i prodotti (con aggiunte/integrale) e memorizza
+  // orario/tipo/note da precompilare nel carrello.
+  const confermaVocale = (analisi) => {
     setCart(prev => {
       const nuovo = [...prev];
-      prodottiTrovati.forEach(({ prodotto, qty }) => {
-        const key = String(prodotto.id);
+      analisi.prodotti.forEach(({ prodotto, qty, aggiunte, integrale }) => {
+        const agg = aggiunte || [];
+        const costoAggiunte = agg.reduce((s, a) => s + a.prezzo, 0) + (integrale ? 1 : 0);
+        const firma = [...agg.map(a => a.nome).sort(), integrale ? 'INT' : ''].join('|');
+        const key = prodotto.id + '::' + firma;
         const ex = nuovo.find(c => c.cartKey === key);
         if (ex) ex.qty += qty;
-        else nuovo.push({ ...prodotto, cartKey: key, qty, aggiunte: [], integrale: false, prezzoBase: prodotto.price });
+        else nuovo.push({
+          ...prodotto, cartKey: key, qty,
+          price: prodotto.price + costoAggiunte,
+          prezzoBase: prodotto.price,
+          aggiunte: agg, integrale: !!integrale,
+        });
       });
       return nuovo;
+    });
+    // memorizza le opzioni dette a voce, il carrello le applicherà
+    setPrecompilaVocale({
+      tipo: analisi.tipo,
+      orario: analisi.orario,
+      note: analisi.note,
     });
     setMostraVocale(false);
     setTab('cart');
@@ -1633,12 +1881,9 @@ export default function App() {
 
       {/* Pallino tempo di attesa (impostato dalla cucina) */}
       {traffico && TRAFFICO_INFO[traffico] && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: '#fff', borderRadius: 14, padding: 12, marginTop: 10, borderWidth: 1, borderColor: C.cremaScuro, borderLeftWidth: 5, borderLeftColor: TRAFFICO_INFO[traffico].color, boxShadow: '0 3px 10px rgba(140,90,20,0.07)' }}>
-          <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: TRAFFICO_INFO[traffico].color }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: C.marrone }}>Attesa stimata: {TRAFFICO_INFO[traffico].tempo}</Text>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>{TRAFFICO_INFO[traffico].label}</Text>
-          </View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#fff', borderRadius: 12, paddingVertical: 8, paddingHorizontal: 12, marginTop: 10, borderWidth: 1, borderColor: C.cremaScuro, borderLeftWidth: 4, borderLeftColor: TRAFFICO_INFO[traffico].color }}>
+          <View style={{ width: 9, height: 9, borderRadius: 5, backgroundColor: TRAFFICO_INFO[traffico].color }} />
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '700', color: C.marrone }}>Attesa stimata: <Text style={{ fontWeight: '900' }}>{TRAFFICO_INFO[traffico].tempo}</Text></Text>
         </View>
       )}
 
@@ -1673,18 +1918,6 @@ export default function App() {
           </TouchableOpacity>
         </View>
       </View>
-
-      {/* Stato attesa cucina (pallino traffico impostato dalla cucina) */}
-      {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 16, padding: 14, marginBottom: 4, borderWidth: 1, borderColor: C.cremaScuro, borderLeftWidth: 5, borderLeftColor: TRAFFICO_INFO[traffico].color, boxShadow: '0 4px 12px rgba(140,90,20,0.08)' }}>
-          <View style={{ width: 16, height: 16, borderRadius: 8, backgroundColor: TRAFFICO_INFO[traffico].color, boxShadow: `0 0 10px ${TRAFFICO_INFO[traffico].color}` }} />
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, fontWeight: '700', letterSpacing: 0.5 }}>TEMPO DI ATTESA STIMATO</Text>
-            <Text style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.marrone }}>{TRAFFICO_INFO[traffico].tempo}</Text>
-          </View>
-          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: TRAFFICO_INFO[traffico].color, fontWeight: '800' }}>{TRAFFICO_INFO[traffico].label}</Text>
-        </View>
-      )}
 
       {/* OFFERTE */}
       <SecLabel testo="Offerte" />
@@ -2263,7 +2496,7 @@ export default function App() {
   const screens = {
     home: Home(),
     menu: Menu(),
-    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} bibitaOmaggioId2={bibitaOmaggioId2} setBibitaOmaggioId2={setBibitaOmaggioId2} mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata} apertura={apertura} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} />,
+    cart: <CartScreen cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw} scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel} bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId} bibitaOmaggioId2={bibitaOmaggioId2} setBibitaOmaggioId2={setBibitaOmaggioId2} mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata} apertura={apertura} combo={combo} setCombo={setCombo} ordered={ordered} setOrdered={setOrdered} setTab={setTab} handleOrder={handleOrder} utente={utente} precompilaVocale={precompilaVocale} setPrecompilaVocale={setPrecompilaVocale} />,
     offers: Offers(),
     profilo: <Profilo />,
     ordini: <Ordini />,

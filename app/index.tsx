@@ -342,6 +342,12 @@ const CORREZIONI_VOCE = {
   'bianca neve': 'biancaneve',
   'giottona': 'ghiottona',
   'arnais': 'arneis',
+  'un pane normale': 'filone classico', 'pane normale': 'filone classico',
+  'un pane integrale': 'filone integrale', 'un pane classico': 'filone classico',
+  'filone classico': 'filone classico', 'filone integrale': 'filone integrale',
+  'pane classico': 'filone classico', 'pane integrale': 'filone integrale',
+  'un filone': 'filone classico', 'il filone': 'filone classico',
+  'del pane': 'filone classico', 'il pane': 'filone classico',
 };
 
 

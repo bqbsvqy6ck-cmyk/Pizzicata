@@ -323,6 +323,9 @@ const CORREZIONI_VOCE = {
   'te alla pesca': 'estathe alla pesca',
   'estate al limone': 'estathe al limone',
   'estate alla pesca': 'estathe alla pesca',
+  'un estate al limone': 'estathe al limone', 'un estate alla pesca': 'estathe alla pesca',
+  'un estate limone': 'estathe al limone', 'un estate pesca': 'estathe alla pesca',
+  'estate al limone': 'estathe al limone', 'estate alla pesca': 'estathe alla pesca',
   'te limone': 'estathe al limone', 'the limone': 'estathe al limone', 'estate limone': 'estathe al limone',
   'te pesca': 'estathe alla pesca', 'the pesca': 'estathe alla pesca', 'estate pesca': 'estathe alla pesca',
   'te alla pesca': 'estathe alla pesca', 'te al limone': 'estathe al limone',
@@ -432,14 +435,14 @@ const analizzaOrdineVocale = (testoParlato) => {
 
   // 3. RIMOZIONI ("senza X", "niente X")
   const rimozioniGlobali = [];
-  const reSenza = /\b(senza|niente|no|togli|togliete|leva|levate)\s+([a-z]+(?:\s+[a-z]+)?)/g;
+  const reSenza = /\b(senza|niente|no|togli|togliete|leva|levate)\s+([a-z]+(?:\s+(?!e\b)[a-z]+)?)/g;
   let mSenza;
   while ((mSenza = reSenza.exec(testo)) !== null) {
     const ing = mSenza[2].trim();
     if (ing.length < 3) continue;
     rimozioniGlobali.push({ ingrediente: ing, pos: mSenza.index });
   }
-  testo = testo.replace(/\b(senza|niente|no|togli|togliete|leva|levate)\s+[a-z]+(?:\s+[a-z]+)?/g, ' ');
+  testo = testo.replace(/\b(senza|niente|no|togli|togliete|leva|levate)\s+[a-z]+(?:\s+(?!e\b)[a-z]+)?/g, ' ');
 
   // 4. NOTE
   const noteTrovate = [];

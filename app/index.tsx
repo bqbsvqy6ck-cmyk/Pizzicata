@@ -1155,12 +1155,13 @@ const inputStyle = {
   border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
   fontSize: 14, color: '#3D1A00', width: '100%', outline: 'none',
   fontFamily: 'inherit', backgroundColor: '#FFFCF6', boxSizing: 'border-box',
+  textAlign: 'left',
 };
 const textareaStyle = {
   border: '1.5px solid #E8D5B0', borderRadius: 10, padding: 12,
   fontSize: 14, color: '#3D1A00', width: '100%', minHeight: 80,
   outline: 'none', fontFamily: 'inherit', resize: 'none',
-  backgroundColor: '#FFFCF6', boxSizing: 'border-box',
+  backgroundColor: '#FFFCF6', boxSizing: 'border-box', textAlign: 'left',
 };
 
 function RuotaFortuna({ girando, premio, rotazione, potenziata, onGira, onChiudi }) {

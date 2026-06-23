@@ -23,8 +23,8 @@ const STATI = {
 };
 
 const TRAFFICO_INFO = {
-  verde:  { label: 'Poco traffico',   tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
-  giallo: { label: 'Traffico medio',  tempo: '30-40 min', color: '#E8A317', emoji: '🟡' },
+  verde:  { label: 'Poco traffico',   tempo: '20-25 min', color: '#27AE60', emoji: '🟢' },
+  giallo: { label: 'Traffico medio',  tempo: '35-45 min', color: '#E8A317', emoji: '🟡' },
   rosso:  { label: 'Traffico alto',   tempo: '60 min e più', color: '#C0392B', emoji: '🔴' },
 };
 
@@ -505,4 +505,4 @@ const S = StyleSheet.create({
   actionBtnTxt: { fontFamily: FONT_TESTO, color: 'white', fontSize: 15, fontWeight: '800' },
   quickBtn: { marginHorizontal: 14, marginBottom: 14, borderRadius: 10, padding: 12, alignItems: 'center' },
   quickBtnTxt: { fontFamily: FONT_TESTO, color: 'white', fontSize: 13, fontWeight: '700' },
-});
+}); 

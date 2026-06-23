@@ -299,8 +299,33 @@ const STATO_INFO = {
 const STATO_STEPS = ['nuovo', 'in_lavorazione', 'pronto', 'consegnato'];
 
 // ANALISI ORDINE VOCALE — prodotti, aggiunte, rimozioni, orario, giorno, combo, note
+const CORREZIONI_VOCE = {
+  'lord one': 'lordone', 'lord on': 'lordone', 'lordon': 'lordone',
+  'ultra pork': 'ultra pork burger',
+  'fanalino': 'fanalino di coda',
+  'yammie ja': 'yammie-ja', 'yami ja': 'yammie-ja',
+  'la anto': 'la antò', 'la antonio': 'la antò',
+  'super nova': 'supernova',
+  'enduja': 'nduja', 'in duja': 'nduja',
+  'bis mark': 'bismark', 'bismarck': 'bismark',
+  'la quattro mori': 'la 4 mori', 'quattro mori': '4 mori',
+  'tre porcellini': '3 porcellini', 'quattro stagioni': '4 stagioni',
+  'scugnizzi': 'scugnizzi fritti', 'suppli': 'suppli romani',
+  'nuggets': 'nuggets di pollo', 'naghets': 'nuggets di pollo',
+  'crocchette': 'crocchette di patate',
+  'cannolo siciliano': 'cannoli siciliani', 'cannolo': 'cannoli siciliani',
+  'cheesecake': 'cheesecake alla fragola',
+  'profiterole': 'profiterol',
+  'coca zero': 'coca cola zero',
+  'ice tea': 'estathe al limone',
+  'spritz': 'aperol spritz',
+};
+
 const analizzaOrdineVocale = (testoParlato) => {
   let testo = normalizza(testoParlato);
+  Object.keys(CORREZIONI_VOCE).forEach(sbagliato => {
+    testo = testo.replace(new RegExp('\\b' + sbagliato + '\\b', 'g'), CORREZIONI_VOCE[sbagliato]);
+  });
   const risultato = {
     prodotti: [], tipo: null, orario: null, giornoSettimana: null,
     combo: false, note: '', testoOriginale: testoParlato,

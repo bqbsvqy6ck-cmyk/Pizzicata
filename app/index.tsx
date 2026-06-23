@@ -319,7 +319,24 @@ const CORREZIONI_VOCE = {
   'coca zero': 'coca cola zero',
   'ice tea': 'estathe al limone',
   'spritz': 'aperol spritz',
+  'coca zero': 'coca cola zero',
+  'ice tea': 'estathe al limone',
+  'spritz': 'aperol spritz',
+  'chedar': 'cheddar', 'ceddar': 'cheddar',
+  'beicon': 'bacon', 'beacon': 'bacon',
+  'vurstel': 'würstel', 'gustel': 'würstel',
+  'spek': 'speck',
+  'bri': 'brie',
+  'amburger': 'hamburger',
+  'barbecue': 'salsa bbq',
+  'pull pork': 'pulled pork', 'pol pork': 'pulled pork',
+  'gioja': 'gioia',
+  'monte bianco': 'montebianco',
+  'bianca neve': 'biancaneve',
+  'giottona': 'ghiottona',
+  'arnais': 'arneis',
 };
+
 
 const analizzaOrdineVocale = (testoParlato) => {
   let testo = normalizza(testoParlato);

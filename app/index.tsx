@@ -2182,7 +2182,7 @@ const S = StyleSheet.create({
   tileTitleNew: { fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: C.marrone },
   tileValNew: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 2 },
 
-  catBar: { backgroundColor: '#F2E8D5', paddingVertical: 10, maxHeight: 58, flexGrow: 0, borderBottomWidth: 1, borderBottomColor: '#E8D5B0' },
+  catBar: { backgroundColor: C.rosso, paddingVertical: 10, maxHeight: 58, flexGrow: 0, borderBottomWidth: 1, borderBottomColor: C.rossoScuro },
   catPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E8D5B0' },
   catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
   catPillText: { fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: C.grigio },

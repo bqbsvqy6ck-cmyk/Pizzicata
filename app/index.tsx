@@ -282,6 +282,12 @@ const statoApertura = (adesso = new Date()) => {
   else prossima = ORARI_APERTURA.pranzo.apre;
   return { aperto: false, prossimaApertura: prossima };
 };
+const eCompleannoOggi = (compleanno) => {
+  if (!compleanno || !compleanno.trim()) return false;
+  const oggi = new Date();
+  const [, mese, giorno] = compleanno.split('-').map(Number);
+  return (oggi.getMonth() + 1 === mese && oggi.getDate() === giorno);
+};
 
 const STATO_INFO = {
   nuovo: { label: 'In attesa di conferma', colore: '#8B7355', step: 0 },
@@ -401,12 +407,33 @@ const analizzaOrdineVocale = (testoParlato) => {
 
   // 5. PRODOTTI + AGGIUNTE
   const prodottiOrdinati = [...TUTTI_PRODOTTI].sort((a, b) => normalizza(b.name).length - normalizza(a.name).length);
+ const singPlur = (parola) => {
+    const out = [parola];
+    if (parola.length > 3) {
+      if (parola.endsWith('a')) out.push(parola.slice(0, -1) + 'e');
+      else if (parola.endsWith('o')) out.push(parola.slice(0, -1) + 'i');
+      else if (parola.endsWith('e')) out.push(parola.slice(0, -1) + 'i', parola.slice(0, -1) + 'a', parola.slice(0, -1) + 'o');
+      else if (parola.endsWith('i')) out.push(parola.slice(0, -1) + 'o', parola.slice(0, -1) + 'e', parola.slice(0, -1) + 'a');
+    }
+    return out;
+  };
   const variantiDi = (nomeNorm) => {
-    const v = [nomeNorm];
-    if (nomeNorm.endsWith('a')) v.push(nomeNorm.slice(0, -1) + 'e');
-    if (nomeNorm.endsWith('o')) v.push(nomeNorm.slice(0, -1) + 'i');
-    if (nomeNorm.endsWith('e')) v.push(nomeNorm.slice(0, -1) + 'i');
-    return v;
+    const v = new Set([nomeNorm]);
+    let parole = nomeNorm.split(' ');
+    // togli articolo iniziale (il, la, lo, i, le, u) se il nome ha più parole
+    const articoli = ['il', 'la', 'lo', 'i', 'le', 'u', 'gli', 'l'];
+    if (parole.length > 1 && articoli.includes(parole[0])) {
+      v.add(parole.slice(1).join(' '));
+      parole = parole.slice(1);
+    }
+    // varianti sing/plur dell'intero nome (cambiando ogni parola)
+    parole.forEach((_, idx) => {
+      singPlur(parole[idx]).forEach(variante => {
+        const copia = [...parole]; copia[idx] = variante;
+        v.add(copia.join(' '));
+      });
+    });
+    return [...v];
   };
   const occorrenze = [];
   let testoMarcato = ' ' + testo + ' ';
@@ -639,7 +666,7 @@ function LoginScreen({ onLogin }) {
   );
 }
 
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, ordered, setOrdered, setTab, setCat, handleOrder, utente, precompilaVocale, setPrecompilaVocale, aggiornaRimozioni }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, scontoCompleanno, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, ordered, setOrdered, setTab, setCat, handleOrder, utente, precompilaVocale, setPrecompilaVocale, aggiornaRimozioni }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
@@ -996,10 +1023,16 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
                 <Text style={[S.totalRow, { color: '#2C5A2E' }]}>− € {scontoCombo.toFixed(2)}</Text>
               </View>
             )}
-            {scontoPremio > 0 && (
+           {scontoPremio > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
                 <Text style={[S.totalRow, { color: '#C8961E' }]}>🎡 {premioLabel}</Text>
                 <Text style={[S.totalRow, { color: '#C8961E' }]}>− € {scontoPremio.toFixed(2)}</Text>
+              </View>
+            )}
+            {scontoCompleanno > 0 && (
+              <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>🎂 Sconto compleanno 10%</Text>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>− € {scontoCompleanno.toFixed(2)}</Text>
               </View>
             )}
             {tipoOrdine === 'domicilio' && (
@@ -1495,7 +1528,7 @@ export default function App() {
   const cartTotalDopoCombo = Math.max(0, cartTotalRaw - scontoCombo);
   let scontoPremio = 0; let premioLabel = '';
   const tuttiProd = Object.values(MENU).flat();
-  if ((utente.premio === 'sconto10' || utente.premio === 'compleanno') && cartTotalDopoCombo > 0) {
+  if (utente.premio === 'sconto10' && cartTotalDopoCombo > 0) {
     scontoPremio = cartTotalDopoCombo * 0.10; premioLabel = 'Sconto 10% (premio ruota)';
   } else if (utente.premio === 'sconto15' && cartTotalDopoCombo > 0) {
     scontoPremio = cartTotalDopoCombo * 0.15; premioLabel = 'Sconto 15% (premio ruota potenziata)';
@@ -1511,7 +1544,9 @@ export default function App() {
     if (b2 && cart.find(c => c.id === bibitaOmaggioId2)) tot += b2.price;
     if (tot > 0) { scontoPremio = tot; premioLabel = '2 bibite omaggio (premio ruota potenziata)'; }
   }
-  const cartTotal = Math.max(0, cartTotalDopoCombo - scontoPremio);
+  const compleannoOggi = eCompleannoOggi(utente.compleanno);
+  const scontoCompleanno = (compleannoOggi && (cartTotalDopoCombo - scontoPremio) > 0) ? (cartTotalDopoCombo - scontoPremio) * 0.10 : 0;
+  const cartTotal = Math.max(0, cartTotalDopoCombo - scontoPremio - scontoCompleanno);
 
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
     const spedizione = tipoOrdine === 'domicilio' ? 2.5 : 0;
@@ -1853,11 +1888,11 @@ export default function App() {
           </View>
         </View>
       </View>
-      <View style={{ backgroundColor: '#FFF8E7', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 24 }}>
+      {(!utente.compleanno || !utente.compleanno.trim()) && <View style={{ backgroundColor: '#FFF8E7', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 24 }}>
         <Text style={{ fontSize: 30, marginBottom: 6 }}>🎂</Text>
         <Text style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.marrone }}>Sconto Compleanno</Text>
         <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginTop: 4 }}>Nel giorno del tuo compleanno hai uno sconto del 10% sul tuo ordine. Assicurati di aver inserito la data nel tuo profilo!</Text>
-      </View>
+      </View>}
     </ScrollView>
   );
 
@@ -2041,6 +2076,7 @@ export default function App() {
       <CartScreen
         cart={cart} setCart={setCart} cartTotal={cartTotal} cartTotalRaw={cartTotalRaw}
         scontoCombo={scontoCombo} scontoPremio={scontoPremio} premioLabel={premioLabel}
+        scontoCompleanno={scontoCompleanno}
         bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId}
         bibitaOmaggioId2={bibitaOmaggioId2} setBibitaOmaggioId2={setBibitaOmaggioId2}
         mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata}
@@ -2092,7 +2128,7 @@ export default function App() {
               <span onClick={() => setMostraOrari(false)} style={{ fontSize: 24, color: C.grigio, cursor: 'pointer' }}>✕</span>
             </div>
             {[
-              { g: 'Lunedì', o: 'Chiuso', chiuso: true },
+              { g: 'Lunedì', o: '12:00–14:30 · 18:15–22:45' },
               { g: 'Martedì', o: '12:00–14:30 · 18:15–22:45' },
               { g: 'Mercoledì', o: '12:00–14:30 · 18:15–22:45' },
               { g: 'Giovedì', o: '12:00–14:30 · 18:15–22:45' },
@@ -2182,7 +2218,7 @@ const S = StyleSheet.create({
   tileTitleNew: { fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: C.marrone },
   tileValNew: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 2 },
 
-  catBar: { backgroundColor: C.rosso, paddingVertical: 10, maxHeight: 58, flexGrow: 0, borderBottomWidth: 1, borderBottomColor: C.rossoScuro },
+  catBar: { backgroundColor: '#F2E8D5', paddingVertical: 10, maxHeight: 58, flexGrow: 0, borderBottomWidth: 1, borderBottomColor: '#E8D5B0' },
   catPill: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, borderRadius: 20, backgroundColor: '#fff', borderWidth: 1, borderColor: '#E8D5B0' },
   catPillActive: { backgroundColor: C.rosso, borderColor: C.rosso },
   catPillText: { fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: C.grigio },

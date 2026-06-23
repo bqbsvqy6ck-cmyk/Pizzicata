@@ -22,7 +22,6 @@ const STATI = {
   rifiutato:      { label: 'Rifiutato',      color: '#8B0000', next: null,              nextLabel: null },
 };
 
-// Livelli di traffico: colore + tempo di attesa comunicato al cliente
 const TRAFFICO_INFO = {
   verde:  { label: 'Poco traffico',   tempo: '15-20 min', color: '#27AE60', emoji: '🟢' },
   giallo: { label: 'Traffico medio',  tempo: '30-40 min', color: '#E8A317', emoji: '🟡' },
@@ -34,16 +33,15 @@ const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
 export default function Cucina() {
   const [ordini, setOrdini] = useState([]);
   const [filtro, setFiltro] = useState('attivi');
-  const [aperto, setAperto] = useState(null); // id ordine espanso
+  const [aperto, setAperto] = useState(null);
   const [loading, setLoading] = useState(false);
   const [errMsg, setErrMsg] = useState('');
   const [suonoAttivo, setSuonoAttivo] = useState(false);
-  const [nuovoArrivato, setNuovoArrivato] = useState(false); // per il lampeggio visivo
-  const [traffico, setTraffico] = useState('verde'); // livello traffico locale
-  const idsNuoviPrec = useRef(null); // set degli id "nuovi" al giro precedente
+  const [nuovoArrivato, setNuovoArrivato] = useState(false);
+  const [traffico, setTraffico] = useState('verde');
+  const idsNuoviPrec = useRef(null);
   const audioCtxRef = useRef(null);
 
-  // Suono campanello generato senza file audio (Web Audio API)
   const suonaCampanello = () => {
     try {
       if (!audioCtxRef.current) {
@@ -51,7 +49,6 @@ export default function Cucina() {
         audioCtxRef.current = new AC();
       }
       const ctx = audioCtxRef.current;
-      // tre note brevi tipo "din-don-din"
       const note = [880, 1175, 988];
       note.forEach((freq, i) => {
         const osc = ctx.createOscillator();
@@ -71,14 +68,13 @@ export default function Cucina() {
   };
 
   const attivaSuono = () => {
-    // Sblocca l'audio (i browser lo bloccano finché l'utente non interagisce)
     try {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!audioCtxRef.current) audioCtxRef.current = new AC();
       if (audioCtxRef.current.state === 'suspended') audioCtxRef.current.resume();
     } catch (e) {}
     setSuonoAttivo(true);
-    suonaCampanello(); // beep di conferma
+    suonaCampanello();
   };
 
   const carica = async () => {
@@ -101,20 +97,18 @@ export default function Cucina() {
     return () => clearInterval(interval);
   }, []);
 
-  // Carica il livello di traffico attuale dal database
   const caricaTraffico = async () => {
     const { data } = await supabase.from('stato_locale').select('traffico').eq('id', 1).single();
     if (data && data.traffico) setTraffico(data.traffico);
   };
   useEffect(() => {
     caricaTraffico();
-    const t = setInterval(caricaTraffico, 30000); // riallinea ogni 30s
+    const t = setInterval(caricaTraffico, 30000);
     return () => clearInterval(t);
   }, []);
 
-  // Cambia il livello di traffico (lo vedrà anche il cliente nella sua home)
   const cambiaTraffico = async (livello) => {
-    setTraffico(livello); // aggiorna subito a schermo
+    setTraffico(livello);
     const { error } = await supabase
       .from('stato_locale')
       .update({ traffico: livello, aggiornato_il: new Date().toISOString() })
@@ -122,24 +116,20 @@ export default function Cucina() {
     if (error) setErrMsg('Errore traffico: ' + error.message);
   };
 
-  // Conta gli ordini ancora da accettare (stato 'nuovo')
   const ordiniNuovi = ordini.filter(o => o.stato === 'nuovo');
   const ceNuoviDaAccettare = ordiniNuovi.length > 0;
 
-  // Suono che si RIPETE finché ci sono ordini nuovi non ancora accettati.
-  // Si ferma da solo appena prendi in carico (o rifiuti) tutti gli ordini nuovi.
   useEffect(() => {
     if (!suonoAttivo || !ceNuoviDaAccettare) return;
-    suonaCampanello(); // suona subito
-    const t = setInterval(suonaCampanello, 3000); // e ripete ogni 3 secondi
+    suonaCampanello();
+    const t = setInterval(suonaCampanello, 3000);
     return () => clearInterval(t);
   }, [suonoAttivo, ceNuoviDaAccettare, ordiniNuovi.length]);
 
-  // Lampeggio visivo attivo finché ci sono ordini nuovi non accettati
   useEffect(() => {
     if (!ceNuoviDaAccettare) { setNuovoArrivato(false); return; }
     setNuovoArrivato(true);
-    const t = setInterval(() => setNuovoArrivato(v => !v), 700); // lampeggia
+    const t = setInterval(() => setNuovoArrivato(v => !v), 700);
     return () => clearInterval(t);
   }, [ceNuoviDaAccettare]);
 
@@ -175,7 +165,7 @@ export default function Cucina() {
   const cambiaOrario = async (ordine) => {
     const attuale = ordine.orario_consegna || '';
     const nuovo = window.prompt('Nuovo orario di consegna/ritiro per questo ordine:', attuale);
-    if (nuovo === null) return; // annullato
+    if (nuovo === null) return;
     const val = nuovo.trim();
     if (!val) return;
     setLoading(true);
@@ -191,28 +181,25 @@ export default function Cucina() {
     setOrdini(prev => prev.map(o => o.id === ordine.id ? { ...o, orario_consegna: val } : o));
   };
 
-  // Reset automatico giornaliero: gli ordini già usciti (consegnati o rifiutati)
-  // più vecchi di 24 ore non vengono più mostrati. La lista si "pulisce" da sola ogni giorno.
-  const ORA = Date.now();
-  const VENTIQUATTRORE = 24 * 60 * 60 * 1000;
-  const nonVecchio = (o) => {
-    // gli ordini ancora in lavorazione restano sempre visibili
-    if (o.stato !== 'consegnato' && o.stato !== 'rifiutato') return true;
-    // quelli usciti spariscono dopo 24h
-    const t = new Date(o.created_at).getTime();
-    if (isNaN(t)) return true;
-    return (ORA - t) < VENTIQUATTRORE;
+  // Ordini di OGGI (per il contatore che si azzera ogni giorno)
+  const isOggi = (o) => {
+    const t = new Date(o.created_at);
+    const adesso = new Date();
+    return t.getDate() === adesso.getDate() &&
+           t.getMonth() === adesso.getMonth() &&
+           t.getFullYear() === adesso.getFullYear();
   };
+  const ordiniOggi = ordini.filter(isOggi);
 
   const visibili = filtro === 'attivi'
     ? ordini.filter(o => o.stato !== 'consegnato' && o.stato !== 'rifiutato')
-    : ordini.filter(nonVecchio);
+    : ordiniOggi;
 
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.marrone} />
 
-      {/* HEADER */}
+      {/* HEADER fisso (solo titolo, filtri e suono) */}
       <View style={[S.header, { background: 'radial-gradient(circle at 85% -30%, rgba(232,184,75,0.4), transparent 55%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
         <Text style={S.headerTitle}>🍕 Cucina Pizzicata</Text>
         <View style={S.headerRow}>
@@ -230,7 +217,7 @@ export default function Cucina() {
               onPress={() => setFiltro('tutti')}
             >
               <Text style={[S.filtroBtnTxt, filtro === 'tutti' && S.filtroBtnTxtOn]}>
-                Tutti ({ordini.length})
+                Oggi ({ordiniOggi.length})
               </Text>
             </TouchableOpacity>
           </View>
@@ -252,43 +239,46 @@ export default function Cucina() {
         {errMsg ? <Text style={S.errMsg}>{errMsg}</Text> : null}
       </View>
 
-      {ceNuoviDaAccettare && (
-        <View style={{ backgroundColor: nuovoArrivato ? '#C0392B' : '#8B0000', padding: 16, alignItems: 'center' }}>
-          <Text style={{ color: 'white', fontSize: 18, fontWeight: '900' }}>
-            🔔 {ordiniNuovi.length === 1 ? '1 NUOVO ORDINE DA ACCETTARE!' : `${ordiniNuovi.length} NUOVI ORDINI DA ACCETTARE!`}
-          </Text>
-          <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>Premi "Prendi in carico" o "Rifiuta" per fermare l'allarme</Text>
-        </View>
-      )}
-
-      {/* CONTROLLO TRAFFICO */}
-      <View style={{ paddingHorizontal: 12, paddingTop: 12 }}>
-        <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.oro, marginBottom: 8 }}>⏱️ TEMPO DI ATTESA MOSTRATO AI CLIENTI</Text>
-        <View style={{ flexDirection: 'row', gap: 8 }}>
-          {['verde', 'giallo', 'rosso'].map(liv => {
-            const info = TRAFFICO_INFO[liv];
-            const attivo = traffico === liv;
-            return (
-              <TouchableOpacity
-                key={liv}
-                onPress={() => cambiaTraffico(liv)}
-                style={{
-                  flex: 1, borderRadius: 12, padding: 10, alignItems: 'center',
-                  backgroundColor: attivo ? info.color : 'rgba(255,255,255,0.06)',
-                  borderWidth: 2, borderColor: attivo ? info.color : 'rgba(255,255,255,0.1)',
-                }}
-              >
-                <Text style={{ fontSize: 20 }}>{info.emoji}</Text>
-                <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '800', color: attivo ? '#fff' : C.grigio, marginTop: 2 }}>{info.tempo}</Text>
-                <Text style={{ fontFamily: FONT_TESTO, fontSize: 9, color: attivo ? 'rgba(255,255,255,0.8)' : C.grigio, marginTop: 1 }}>{info.label}</Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </View>
-
-      {/* LISTA ORDINI */}
+      {/* TUTTO IL RESTO SCORRE: banner allarme, controllo traffico, lista ordini */}
       <ScrollView style={S.scroll} contentContainerStyle={{ paddingBottom: 40 }}>
+
+        {/* Banner allarme nuovi ordini (ora scorre con la lista) */}
+        {ceNuoviDaAccettare && (
+          <View style={{ backgroundColor: nuovoArrivato ? '#C0392B' : '#8B0000', padding: 16, alignItems: 'center', borderRadius: 12, marginBottom: 12 }}>
+            <Text style={{ color: 'white', fontSize: 18, fontWeight: '900' }}>
+              🔔 {ordiniNuovi.length === 1 ? '1 NUOVO ORDINE DA ACCETTARE!' : `${ordiniNuovi.length} NUOVI ORDINI DA ACCETTARE!`}
+            </Text>
+            <Text style={{ color: 'rgba(255,255,255,0.85)', fontSize: 12, marginTop: 2 }}>Premi "Prendi in carico" o "Rifiuta" per fermare l'allarme</Text>
+          </View>
+        )}
+
+        {/* Controllo traffico (ora scorre con la lista) */}
+        <View style={{ marginBottom: 12 }}>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.oro, marginBottom: 8 }}>⏱️ TEMPO DI ATTESA MOSTRATO AI CLIENTI</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            {['verde', 'giallo', 'rosso'].map(liv => {
+              const info = TRAFFICO_INFO[liv];
+              const attivo = traffico === liv;
+              return (
+                <TouchableOpacity
+                  key={liv}
+                  onPress={() => cambiaTraffico(liv)}
+                  style={{
+                    flex: 1, borderRadius: 12, padding: 10, alignItems: 'center',
+                    backgroundColor: attivo ? info.color : 'rgba(255,255,255,0.06)',
+                    borderWidth: 2, borderColor: attivo ? info.color : 'rgba(255,255,255,0.1)',
+                  }}
+                >
+                  <Text style={{ fontSize: 20 }}>{info.emoji}</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, fontWeight: '800', color: attivo ? '#fff' : C.grigio, marginTop: 2 }}>{info.tempo}</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 9, color: attivo ? 'rgba(255,255,255,0.8)' : C.grigio, marginTop: 1 }}>{info.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+        </View>
+
+        {/* LISTA ORDINI */}
         {visibili.length === 0 && (
           <View style={S.empty}>
             <Text style={{ fontSize: 52 }}>✅</Text>
@@ -306,6 +296,9 @@ export default function Cucina() {
           const oraArrivo = ordine.created_at
             ? new Date(ordine.created_at).toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' })
             : '';
+          const giornoArrivo = ordine.created_at
+            ? new Date(ordine.created_at).toLocaleDateString('it-IT', { weekday: 'short', day: '2-digit', month: '2-digit' })
+            : '';
           const pagLabel = ordine.pagamento
             ? ordine.pagamento.charAt(0).toUpperCase() + ordine.pagamento.slice(1)
             : 'Contanti';
@@ -313,7 +306,6 @@ export default function Cucina() {
           return (
             <View key={ordine.id} style={[S.card, { borderLeftColor: cfg.color, background: 'linear-gradient(160deg, #2e1808 0%, #1d0e02 100%)' }]}>
 
-              {/* HEADER CARD — sempre visibile, tap per espandere */}
               <TouchableOpacity
                 style={S.cardHeader}
                 onPress={() => setAperto(isAperto ? null : ordine.id)}
@@ -325,7 +317,7 @@ export default function Cucina() {
                   </View>
                   <Text style={S.cardNome}>{ordine.cliente}</Text>
                   <Text style={S.cardOrario}>{orarioLabel}</Text>
-                  {oraArrivo ? <Text style={{ fontSize: 12, color: C.grigio, marginTop: 2 }}>Ordine ricevuto: {oraArrivo}</Text> : null}
+                  {oraArrivo ? <Text style={{ fontSize: 12, color: C.grigio, marginTop: 2 }}>Ricevuto: {giornoArrivo} alle {oraArrivo}</Text> : null}
                 </View>
                 <View style={S.cardHeaderRight}>
                   <Text style={S.cardTotale}>€ {Number(ordine.totale || 0).toFixed(2)}</Text>
@@ -334,18 +326,15 @@ export default function Cucina() {
                 </View>
               </TouchableOpacity>
 
-              {/* DETTAGLI — visibili solo se aperto */}
               {isAperto && (
                 <View style={S.cardBody}>
 
-                  {/* Cliente */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>CLIENTE</Text>
                     <Text style={S.infoVal}>👤 {ordine.cliente}</Text>
                     <Text style={S.infoVal}>📞 {ordine.telefono}</Text>
                   </View>
 
-                  {/* Consegna */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>CONSEGNA</Text>
                     <Text style={S.infoVal}>
@@ -359,7 +348,6 @@ export default function Cucina() {
                     </View>
                   </View>
 
-                  {/* Pagamento */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>PAGAMENTO</Text>
                     <Text style={S.infoVal}>
@@ -367,7 +355,6 @@ export default function Cucina() {
                     </Text>
                   </View>
 
-                  {/* Articoli */}
                   <View style={S.sezione}>
                     <Text style={S.sezioneLabel}>ARTICOLI</Text>
                     {items.map((item, i) => (
@@ -379,6 +366,9 @@ export default function Cucina() {
                           {item.aggiunte && item.aggiunte.length > 0 ? (
                             <Text style={S.itemExtra}>+ {item.aggiunte.join(', ')}</Text>
                           ) : null}
+                          {item.rimozioni && item.rimozioni.length > 0 ? (
+                            <Text style={[S.itemExtra, { color: '#FF9999' }]}>− senza {item.rimozioni.join(', ')}</Text>
+                          ) : null}
                         </View>
                         <Text style={S.itemPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
                       </View>
@@ -389,7 +379,6 @@ export default function Cucina() {
                     </View>
                   </View>
 
-                  {/* Note / allergie */}
                   {ordine.note ? (
                     <View style={S.noteBox}>
                       <Text style={S.sezioneLabel}>⚠️ NOTE / ALLERGIE</Text>
@@ -397,7 +386,6 @@ export default function Cucina() {
                     </View>
                   ) : null}
 
-                  {/* Bottone avanza stato + Rifiuta */}
                   {cfg.next && (
                     <View style={{ flexDirection: 'row', gap: 8 }}>
                       <TouchableOpacity
@@ -433,7 +421,6 @@ export default function Cucina() {
                 </View>
               )}
 
-              {/* Bottoni rapidi anche da chiuso (solo per "nuovo") */}
               {!isAperto && ordine.stato === 'nuovo' && (
                 <View style={{ flexDirection: 'row', gap: 8, marginHorizontal: 14, marginBottom: 14 }}>
                   <TouchableOpacity
@@ -481,7 +468,6 @@ const S = StyleSheet.create({
   empty: { alignItems: 'center', marginTop: 80, gap: 14 },
   emptyTxt: { fontFamily: FONT_TESTO, color: C.grigio, fontSize: 16 },
 
-  // Card
   card: {
     borderRadius: 16, marginBottom: 14, borderLeftWidth: 5, overflow: 'hidden',
     backgroundColor: '#2a1505',
@@ -498,13 +484,11 @@ const S = StyleSheet.create({
   cardTotale: { fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: '900', color: C.oroChiaro },
   cardTipo: { fontFamily: FONT_TESTO, fontSize: 16, fontWeight: '900', color: C.crema, marginTop: 4, backgroundColor: 'rgba(0,0,0,0.3)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
 
-  // Body espanso
   cardBody: { borderTopWidth: 1, borderTopColor: 'rgba(232,184,75,0.12)' },
   sezione: { padding: 14, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)' },
   sezioneLabel: { fontFamily: FONT_TESTO, fontSize: 9, letterSpacing: 2, color: C.oro, marginBottom: 6, fontWeight: '800' },
   infoVal: { fontFamily: FONT_TESTO, fontSize: 14, color: C.crema, fontWeight: '600', marginBottom: 3 },
 
-  // Articoli
   itemRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: 4, gap: 8 },
   itemQty: { fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.oroChiaro, minWidth: 28 },
   itemName: { flex: 1, fontFamily: FONT_TESTO, fontSize: 13, color: C.crema },
@@ -514,11 +498,9 @@ const S = StyleSheet.create({
   totaleLbl: { fontFamily: FONT_TESTO, fontSize: 11, fontWeight: '800', color: C.grigio, letterSpacing: 1 },
   totaleVal: { fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.oroChiaro },
 
-  // Note
   noteBox: { margin: 14, marginTop: 0, backgroundColor: 'rgba(200,150,30,0.12)', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: 'rgba(232,184,75,0.2)' },
   noteTxt: { fontFamily: FONT_TESTO, fontSize: 13, color: '#FFD080', fontStyle: 'italic', marginTop: 4 },
 
-  // Bottoni
   actionBtn: { margin: 14, marginTop: 6, borderRadius: 12, padding: 16, alignItems: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.3)' },
   actionBtnTxt: { fontFamily: FONT_TESTO, color: 'white', fontSize: 15, fontWeight: '800' },
   quickBtn: { marginHorizontal: 14, marginBottom: 14, borderRadius: 10, padding: 12, alignItems: 'center' },

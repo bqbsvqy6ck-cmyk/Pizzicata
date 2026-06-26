@@ -1819,10 +1819,10 @@ export default function App() {
           <Text style={S.profiloMiniNome}>Ciao {utente.nome}{utente.cognome ? ' ' + utente.cognome : ''}!</Text>
           <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
         </View>
-        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
+        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr} [{apertura.aperto ? 'APERTO' : 'CHIUSO'}]</Text>
       </TouchableOpacity>
 
-      {traffico && TRAFFICO_INFO[traffico] && (
+      {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: TRAFFICO_INFO[traffico].color, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
           <Text style={{ fontSize: 20 }}>{TRAFFICO_INFO[traffico].emoji}</Text>
           <View style={{ flex: 1 }}>

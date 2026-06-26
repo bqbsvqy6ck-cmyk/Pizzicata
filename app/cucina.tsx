@@ -31,6 +31,9 @@ const TRAFFICO_INFO = {
 const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
 
 export default function Cucina() {
+  const [sbloccato, setSbloccato] = useState(false);
+  const [passwordInserita, setPasswordInserita] = useState('');
+  const [errorePassword, setErrorePassword] = useState('');
   const [ordini, setOrdini] = useState([]);
   const [filtro, setFiltro] = useState('attivi');
   const [aperto, setAperto] = useState(null);
@@ -77,6 +80,8 @@ export default function Cucina() {
     suonaCampanello();
   };
 
+  const [conteggioOrdini, setConteggioOrdini] = useState({});
+
   const carica = async () => {
     const { data, error } = await supabase
       .from('ordini')
@@ -87,6 +92,13 @@ export default function Cucina() {
     if (data) {
       idsNuoviPrec.current = new Set(data.filter(o => o.stato === 'nuovo').map(o => o.id));
       setOrdini(data);
+    }
+    // conta gli ordini totali per ogni telefono
+    const { data: tuttiOrdini } = await supabase.from('ordini').select('telefono').neq('stato', 'rifiutato');
+    if (tuttiOrdini) {
+      const conteggio = {};
+      tuttiOrdini.forEach(o => { if (o.telefono) conteggio[o.telefono] = (conteggio[o.telefono] || 0) + 1; });
+      setConteggioOrdini(conteggio);
     }
     setErrMsg('');
   };
@@ -198,6 +210,28 @@ export default function Cucina() {
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.marrone} />
+      {!sbloccato && (
+        <div style={{ position: 'fixed', inset: 0, background: 'linear-gradient(160deg, #2e1808 0%, #140800 100%)', zIndex: 999999, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24 }}>
+          <div style={{ fontSize: 50, marginBottom: 12 }}>🔒</div>
+          <div style={{ fontFamily: FONT_TITOLO, fontSize: 24, fontWeight: 900, color: C.crema, marginBottom: 8 }}>Cucina Pizzicata</div>
+          <div style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.grigio, marginBottom: 20 }}>Inserisci la password per accedere</div>
+          <input
+            type="password"
+            value={passwordInserita}
+            onChange={(e) => setPasswordInserita(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') { if (passwordInserita === 'Carminiello') { setSbloccato(true); setErrorePassword(''); } else { setErrorePassword('Password errata'); } } }}
+            placeholder="Password"
+            style={{ padding: 14, fontSize: 16, borderRadius: 12, border: '2px solid ' + C.oro, background: '#1d0e02', color: C.crema, width: '100%', maxWidth: 280, textAlign: 'center', outline: 'none', marginBottom: 12 }}
+          />
+          {errorePassword ? <div style={{ color: '#FF6B6B', fontSize: 13, marginBottom: 12 }}>{errorePassword}</div> : null}
+          <button
+            onClick={() => { if (passwordInserita === 'Carminiello') { setSbloccato(true); setErrorePassword(''); } else { setErrorePassword('Password errata'); } }}
+            style={{ background: C.oro, color: C.marrone, fontWeight: 900, fontSize: 16, border: 'none', borderRadius: 12, padding: '14px 40px', cursor: 'pointer', fontFamily: FONT_TESTO }}
+          >
+            Entra
+          </button>
+        </div>
+      )}
 
       {/* HEADER fisso (solo titolo, filtri e suono) */}
       <View style={[S.header, { background: 'radial-gradient(circle at 85% -30%, rgba(232,184,75,0.4), transparent 55%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
@@ -333,6 +367,11 @@ export default function Cucina() {
                     <Text style={S.sezioneLabel}>CLIENTE</Text>
                     <Text style={S.infoVal}>👤 {ordine.cliente}</Text>
                     <Text style={S.infoVal}>📞 {ordine.telefono}</Text>
+                    {(() => {
+                      const n = conteggioOrdini[ordine.telefono] || 0;
+                      if (n <= 1) return <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: '#7FD17F', fontWeight: '800', marginTop: 3 }}>🌟 Primo ordine di questo cliente!</Text>;
+                      return <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.oroChiaro, fontWeight: '800', marginTop: 3 }}>🔁 Ordine n° {n} di questo cliente</Text>;
+                    })()}
                   </View>
 
                   <View style={S.sezione}>

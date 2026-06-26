@@ -1102,7 +1102,7 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
             )}
             {scontoCompleanno > 0 && (
               <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 }}>
-                <Text style={[S.totalRow, { color: '#C8961E' }]}>🎂 Sconto compleanno 10%</Text>
+                <Text style={[S.totalRow, { color: '#C8961E' }]}>🎂 Sconto compleanno 15%</Text>
                 <Text style={[S.totalRow, { color: '#C8961E' }]}>− € {scontoCompleanno.toFixed(2)}</Text>
               </View>
             )}
@@ -1582,15 +1582,21 @@ export default function App() {
   const setUtente = (u) => setUtenteRaw(u);
 
   // carica i dati del cliente dalla sessione Auth
-  const caricaCliente = async () => {
+ const caricaCliente = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (session && session.user) {
       const { data } = await supabase.from('clienti').select('*').eq('id', session.user.id).single();
       if (data) {
+        // calcola la spesa degli ultimi 12 mesi
+        let speso12Mesi = 0;
+        const unAnnoFa = new Date(); unAnnoFa.setFullYear(unAnnoFa.getFullYear() - 1);
+        const { data: ordiniAnno } = await supabase.from('ordini').select('totale, created_at').eq('telefono', data.telefono || '').gte('created_at', unAnnoFa.toISOString());
+        if (ordiniAnno) speso12Mesi = ordiniAnno.reduce((s, o) => s + (Number(o.totale) || 0), 0);
         setUtenteRaw({
           id: data.id, telefono: data.telefono || '', nome: data.nome || '', cognome: data.cognome || '',
           email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti',
           allergie: data.allergie || '', premio: data.premio_attivo || '', compleanno: data.compleanno || '',
+          speso12Mesi,
         });
       }
     } else {
@@ -1766,7 +1772,8 @@ export default function App() {
     if (tot > 0) { scontoPremio = tot; premioLabel = '2 bibite omaggio (premio ruota potenziata)'; }
   }
   const compleannoOggi = eCompleannoOggi(utente.compleanno);
-  const scontoCompleanno = (compleannoOggi && (cartTotalDopoCombo - scontoPremio) > 0) ? (cartTotalDopoCombo - scontoPremio) * 0.10 : 0;
+  const haSpesoAbbastanza = (utente.speso12Mesi || 0) >= 50;
+  const scontoCompleanno = (compleannoOggi && haSpesoAbbastanza && (cartTotalDopoCombo - scontoPremio) > 0) ? (cartTotalDopoCombo - scontoPremio) * 0.15 : 0;
   const cartTotal = Math.max(0, cartTotalDopoCombo - scontoPremio - scontoCompleanno);
 
   const handleOrder = async ({ indirizzo, note, tipoOrdine, orario, pagamento, giorno }) => {
@@ -2037,7 +2044,7 @@ export default function App() {
       {(!utente.compleanno || !utente.compleanno.trim()) && <View style={{ backgroundColor: '#FFF8E7', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 24 }}>
         <Text style={{ fontSize: 30, marginBottom: 6 }}>🎂</Text>
         <Text style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.marrone }}>Sconto Compleanno</Text>
-        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginTop: 4 }}>Nel giorno del tuo compleanno hai uno sconto del 10% sul tuo ordine. Assicurati di aver inserito la data nel tuo profilo!</Text>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginTop: 4 }}>Nel giorno del tuo compleanno hai uno sconto del 15% sul tuo ordine, riservato ai clienti che hanno ordinato almeno 50€ nell'ultimo anno. Un regalo per i nostri clienti più affezionati!</Text>
       </View>}
     </ScrollView>
   );
@@ -2086,6 +2093,27 @@ export default function App() {
             </View>
           </View>
         ) : null}
+        {(() => {
+          const speso = utente.speso12Mesi || 0;
+          const obiettivo = 50;
+          const perc = Math.min(100, (speso / obiettivo) * 100);
+          const sbloccato = speso >= obiettivo;
+          return (
+            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: sbloccato ? C.oro : '#E8D5B0' }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                <Text style={{ fontSize: 22 }}>🎂</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Sconto compleanno 15%</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>{sbloccato ? '✓ Sbloccato! Attivo nel giorno del tuo compleanno' : `Ordina ancora € ${(obiettivo - speso).toFixed(2)} per sbloccarlo`}</Text>
+                </View>
+              </View>
+              <View style={{ height: 12, backgroundColor: '#F0E8D8', borderRadius: 6, overflow: 'hidden' }}>
+                <View style={{ width: `${perc}%`, height: '100%', background: sbloccato ? 'linear-gradient(90deg, #C8961E, #E8B84B)' : 'linear-gradient(90deg, #8B1A1A, #C0392B)' }} />
+              </View>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 6, textAlign: 'right' }}>€ {speso.toFixed(2)} / € {obiettivo.toFixed(2)} (ultimi 12 mesi)</Text>
+            </View>
+          );
+        })()}
 
         <View style={S.formBox}>
           <Text style={S.formLabel}>NOME</Text>
@@ -2107,7 +2135,7 @@ export default function App() {
           {compleannoBloccato ? (
             <>
               <input style={{ ...inputStyle, backgroundColor: '#F0E8D8', color: C.grigio }} value={(() => { const p = utente.compleanno.split('-'); const mesi = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']; return p[2] && p[1] ? p[2] + ' ' + mesi[parseInt(p[1])] : utente.compleanno; })()} disabled readOnly />
-              <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Compleanno salvato! Avrai uno sconto del 10% nel giorno del tuo compleanno.</Text>
+              <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Compleanno salvato! Avrai uno sconto del 15% nel giorno del tuo compleanno (per chi ha ordinato almeno 50€ nell'ultimo anno).</Text>
             </>
           ) : (
             <>

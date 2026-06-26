@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 const supabase = createClient(
@@ -58,7 +58,7 @@ const MENU = {
     { id: 26, name: 'Ghiottona', desc: 'Mozzarella, Salsiccia, Grana, Verdure, Bacon', price: 9.00 },
     { id: 27, name: 'Giambone', desc: 'Mozzarella, Pomodorini, Tonno, Zucchine, Cipolla, Rucola, Grana', price: 9.00 },
     { id: 28, name: 'Golden', desc: 'Mozzarella, Cipolla, Funghi, Salsiccia, Grana, Olio al tartufo', price: 10.50 },
-    { id: 29, name: 'Nduja Bianca', desc: "Mozzarella, Nduja, Salsiccia, Cipolla, Basilico", price: 9.00 },
+    { id: 29, name: 'Nduja', desc: "Mozzarella, Nduja, Salsiccia, Cipolla, Basilico", price: 9.00 },
     { id: 30, name: 'Nonno Federico', desc: 'Mozzarella, Gorgonzola, Cipolla, Salsiccia, Peperoni, Uovo', price: 9.00 },
     { id: 31, name: 'Nova', desc: 'Mozzarella, Salsiccia, Burrata', price: 10.00 },
     { id: 32, name: 'Ortolana', desc: 'Mozzarella, Pomodorini, Peperoni, Melanzane, Zucchine, Cipolla', price: 8.00 },
@@ -603,123 +603,130 @@ const indiceGiornoNelCalendario = (dayOfWeek, haPane) => {
   return start;
 };
 
-// LOGIN SCREEN — con compleanno nel sign-up
+
 function LoginScreen({ onLogin }) {
-  const [tel, setTel] = useState('');
+  const [modo, setModo] = useState('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [nome, setNome] = useState('');
   const [cognome, setCognome] = useState('');
-  const [email, setEmail] = useState('');
+  const [tel, setTel] = useState('');
   const [indirizzo, setIndirizzo] = useState('');
   const [allergie, setAllergie] = useState('');
   const [compleanno, setCompleanno] = useState('');
-  const [step, setStep] = useState(1);
   const [errore, setErrore] = useState('');
   const [loading, setLoading] = useState(false);
+  const [vediPassword, setVediPassword] = useState(false);
 
-  const avanti = async () => {
-    const clean = tel.replace(/\s/g, '');
-    if (clean.length < 9) { setErrore('Inserisci un numero valido'); return; }
+  const faiLogin = async () => {
+    setErrore('');
+    if (!email.trim() || !password) { setErrore('Inserisci email e password'); return; }
     setLoading(true);
-    const { data } = await supabase.from('clienti').select('*').eq('telefono', clean).single();
+    const { error } = await supabase.auth.signInWithPassword({ email: email.trim().toLowerCase(), password });
     setLoading(false);
-    if (data) {
-      let premioFinale = data.premio_attivo || '';
-      if (data.compleanno && data.compleanno.trim()) {
-        const oggi = new Date();
-        const [, mese, giorno] = data.compleanno.split('-').map(Number);
-        const eCompleannoOggi = (oggi.getMonth() + 1 === mese && oggi.getDate() === giorno);
-        const annoOggi = oggi.getFullYear();
-        const giaUsatoQuestAnno = data.compleanno_usato === String(annoOggi);
-        if (eCompleannoOggi && !giaUsatoQuestAnno && !premioFinale) {
-          premioFinale = 'compleanno';
-          try { supabase.from('clienti').update({ premio_attivo: 'compleanno', compleanno_usato: String(annoOggi) }).eq('telefono', clean); } catch (e) {}
-        }
-      }
-      onLogin({ telefono: clean, nome: data.nome, cognome: data.cognome || '', email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti', allergie: data.allergie || '', premio: premioFinale, compleanno: data.compleanno || '' });
-    } else {
-      setStep(2); setErrore('');
-    }
+    if (error) { setErrore(error.message.includes('Invalid') ? 'Email o password errati' : 'Errore: ' + error.message); return; }
+    onLogin();
   };
 
-  const registra = async () => {
-    if (!nome.trim()) { setErrore('Inserisci il tuo nome'); return; }
-    if (!cognome.trim()) { setErrore('Inserisci il tuo cognome'); return; }
-    const clean = tel.replace(/\s/g, '');
+  const faiRegistrazione = async () => {
+    setErrore('');
+    if (!email.trim() || !password) { setErrore('Inserisci email e password'); return; }
+    if (password.length < 6) { setErrore('La password deve avere almeno 6 caratteri'); return; }
+    if (!nome.trim()) { setErrore('Inserisci il nome'); return; }
+    if (!cognome.trim()) { setErrore('Inserisci il cognome'); return; }
+    if (tel.replace(/\s/g, '').length < 9) { setErrore('Inserisci un numero di telefono valido'); return; }
+    if (!indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo'); return; }
+    if (!compleanno) { setErrore('Inserisci la data di compleanno'); return; }
     setLoading(true);
+    const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
+    if (error) { setLoading(false); setErrore(error.message.includes('already') ? 'Email già registrata, accedi' : 'Errore: ' + error.message); return; }
+    // assicura la sessione attiva prima di salvare i dati
     const datiCliente = {
-      telefono: clean, nome: nome.trim(), cognome: cognome.trim(),
-      email: email.trim(), indirizzo: indirizzo.trim(),
-      pagamento: 'contanti', allergie: allergie.trim(),
+      telefono: tel.replace(/\s/g, ''), nome: nome.trim(), cognome: cognome.trim(),
+      indirizzo: indirizzo.trim(), allergie: allergie.trim(), compleanno, pagamento: 'contanti',
     };
-    if (compleanno) datiCliente.compleanno = compleanno;
-    const { error } = await supabase.from('clienti').insert([datiCliente]);
+    if (data.user) {
+      const { error: errUpd } = await supabase.from('clienti').update(datiCliente).eq('id', data.user.id);
+      if (errUpd) { setLoading(false); setErrore('Account creato ma errore nel salvare i dati: ' + errUpd.message); return; }
+    }
     setLoading(false);
-    if (error) { setErrore('Errore: ' + error.message); return; }
-    onLogin(datiCliente);
+    onLogin();
   };
 
   return (
     <View style={S.root}>
       <StatusBar barStyle="light-content" backgroundColor={C.rosso} />
       <View style={[S.loginHeader, { background: 'radial-gradient(circle at 80% -10%, rgba(232,184,75,0.4), transparent 55%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
-        <svg width="120" height="120" viewBox="0 0 200 200" fill="none" style={{ position: 'absolute', right: -20, bottom: -30, opacity: 0.55 }}>
-          <path d="M100 10 L190 170 Q100 200 10 170 Z" fill="#E8B84B"/>
-          <path d="M100 30 L175 165 Q100 190 25 165 Z" fill="#C0392B" opacity="0.85"/>
-          <circle cx="80" cy="120" r="11" fill="#F2E8D5"/>
-          <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
-          <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
-        </svg>
         <Text style={S.loginLogo}>Pizzicata</Text>
         <Text style={S.loginSub}>— TORINO —</Text>
       </View>
       <ScrollView style={S.loginBody} contentContainerStyle={S.loginBodyContent} showsVerticalScrollIndicator={false}>
         <Text style={S.loginEmoji}>🍕</Text>
-        <Text style={S.loginTitle}>Benvenuto!</Text>
-        <Text style={S.loginDesc}>
-          {step === 1 ? 'Inserisci il tuo numero di telefono per ordinare' : 'Prima volta? Completa i tuoi dati'}
-        </Text>
-        {step === 1 ? (
-          <View style={S.loginBox}>
-            <Text style={S.formLabel}>NUMERO DI TELEFONO</Text>
-            <input style={inputStyle} placeholder="333 1234567" value={tel} onChange={(e) => setTel(e.target.value)} type="tel" />
-            {errore ? <Text style={S.errore}>{errore}</Text> : null}
-            <TouchableOpacity style={S.checkoutBtn} onPress={avanti}>
-              <Text style={S.checkoutText}>{loading ? 'Caricamento...' : 'Continua'}</Text>
+        <Text style={S.loginTitle}>{modo === 'login' ? 'Bentornato!' : 'Crea il tuo account'}</Text>
+        <Text style={S.loginDesc}>{modo === 'login' ? 'Accedi con email e password' : 'Registrati per ordinare'}</Text>
+
+        <View style={S.loginBox}>
+          <Text style={S.formLabel}>EMAIL</Text>
+          <input style={inputStyle} placeholder="mario.rossi@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+          <View style={{ height: 12 }} />
+          <Text style={S.formLabel}>PASSWORD</Text>
+          <View style={{ position: 'relative' }}>
+            <input style={{ ...inputStyle, paddingRight: 44 }} placeholder="Almeno 6 caratteri" value={password} onChange={(e) => setPassword(e.target.value)} type={vediPassword ? 'text' : 'password'} />
+            <TouchableOpacity onPress={() => setVediPassword(!vediPassword)} style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18 }}>{vediPassword ? '🙈' : '👁️'}</Text>
             </TouchableOpacity>
           </View>
-        ) : (
-          <View style={S.loginBox}>
-            <Text style={S.formLabel}>NOME *</Text>
-            <input style={inputStyle} placeholder="Mario" value={nome} onChange={(e) => setNome(e.target.value)} />
-            <View style={{ height: 12 }} />
-            <Text style={S.formLabel}>COGNOME *</Text>
-            <input style={inputStyle} placeholder="Rossi" value={cognome} onChange={(e) => setCognome(e.target.value)} />
-            <View style={{ height: 12 }} />
-            <Text style={S.formLabel}>EMAIL</Text>
-            <input style={inputStyle} placeholder="mario.rossi@email.com" value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-            <View style={{ height: 12 }} />
-            <Text style={S.formLabel}>INDIRIZZO</Text>
-            <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
-            <View style={{ height: 12 }} />
-            <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE (se presenti)</Text>
-            <input style={inputStyle} placeholder="Es. glutine, lattosio..." value={allergie} onChange={(e) => setAllergie(e.target.value)} />
-            <View style={{ height: 12 }} />
-            <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO</Text>
-            <input style={inputStyle} value={compleanno} onChange={(e) => setCompleanno(e.target.value)} type="date" />
-            {errore ? <Text style={S.errore}>{errore}</Text> : null}
-            <TouchableOpacity style={S.checkoutBtn} onPress={registra}>
-              <Text style={S.checkoutText}>{loading ? 'Registrazione...' : 'Crea account'}</Text>
+
+          {modo === 'registra' && (
+            <>
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>NOME *</Text>
+              <input style={inputStyle} placeholder="Mario" value={nome} onChange={(e) => setNome(e.target.value)} />
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>COGNOME *</Text>
+              <input style={inputStyle} placeholder="Rossi" value={cognome} onChange={(e) => setCognome(e.target.value)} />
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>TELEFONO *</Text>
+              <input style={inputStyle} placeholder="333 1234567" value={tel} onChange={(e) => setTel(e.target.value)} type="tel" />
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>INDIRIZZO *</Text>
+              <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE (facoltativo)</Text>
+              <input style={inputStyle} placeholder="Es. glutine, lattosio..." value={allergie} onChange={(e) => setAllergie(e.target.value)} />
+              <View style={{ height: 12 }} />
+              <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO *</Text>
+              <input style={inputStyle} value={compleanno} onChange={(e) => setCompleanno(e.target.value)} type="date" />
+              <Text style={{ fontSize: 11, color: '#C0392B', marginTop: 6, fontWeight: '700' }}>⚠️ Attenzione: la data di compleanno non potrà più essere modificata dopo la registrazione.</Text>
+            </>
+          )}
+
+          {errore ? <Text style={S.errore}>{errore}</Text> : null}
+
+          <TouchableOpacity style={S.checkoutBtn} onPress={modo === 'login' ? faiLogin : faiRegistrazione}>
+            <Text style={S.checkoutText}>{loading ? 'Attendi...' : (modo === 'login' ? 'Accedi' : 'Crea account')}</Text>
+          </TouchableOpacity>
+          {modo === 'login' && (
+            <TouchableOpacity onPress={async () => {
+              if (!email.trim()) { setErrore('Scrivi prima la tua email qui sopra, poi premi "Password dimenticata"'); return; }
+              const { error } = await supabase.auth.resetPasswordForEmail(email.trim().toLowerCase());
+              if (error) { setErrore('Errore: ' + error.message); }
+              else { setErrore(''); alert('Ti abbiamo inviato una mail per reimpostare la password. Controlla la posta.'); }
+            }} style={{ marginTop: 12, alignItems: 'center' }}>
+              <Text style={{ color: C.grigio, fontSize: 13, textDecorationLine: 'underline' }}>Password dimenticata?</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setStep(1)} style={{ marginTop: 12, alignItems: 'center', marginBottom: 30 }}>
-              <Text style={{ color: C.grigio, fontSize: 13 }}>Indietro</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+          )}
+
+          <TouchableOpacity onPress={() => { setModo(modo === 'login' ? 'registra' : 'login'); setErrore(''); }} style={{ marginTop: 14, alignItems: 'center', marginBottom: 30 }}>
+            <Text style={{ color: C.rosso, fontSize: 14, fontWeight: '700' }}>
+              {modo === 'login' ? 'Non hai un account? Registrati' : 'Hai già un account? Accedi'}
+            </Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </View>
   );
 }
-
 function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, scontoCompleanno, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, ordered, setOrdered, setTab, setCat, handleOrder, utente, precompilaVocale, setPrecompilaVocale, aggiornaRimozioni }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
@@ -1439,12 +1446,159 @@ function OrdineVocale({ onChiudi, onConferma }) {
     </div>
   );
 }
+function ResetPasswordScreen({ onFatto }) {
+  const [nuovaPassword, setNuovaPassword] = useState('');
+  const [vedi, setVedi] = useState(false);
+  const [errore, setErrore] = useState('');
+  const [loading, setLoading] = useState(false);
 
+  const salva = async () => {
+    setErrore('');
+    if (nuovaPassword.length < 6) { setErrore('La password deve avere almeno 6 caratteri'); return; }
+    setLoading(true);
+    const { error } = await supabase.auth.updateUser({ password: nuovaPassword });
+    setLoading(false);
+    if (error) { setErrore('Errore: ' + error.message); return; }
+    alert('Password aggiornata! Ora puoi usarla per accedere.');
+    onFatto();
+  };
+
+  return (
+    <View style={S.root}>
+      <StatusBar barStyle="light-content" backgroundColor={C.rosso} />
+      <View style={[S.loginHeader, { background: 'radial-gradient(circle at 80% -10%, rgba(232,184,75,0.4), transparent 55%), linear-gradient(135deg, #8B1A1A 0%, #5C0F0F 100%)' }]}>
+        <Text style={S.loginLogo}>Pizzicata</Text>
+        <Text style={S.loginSub}>— TORINO —</Text>
+      </View>
+      <ScrollView style={S.loginBody} contentContainerStyle={S.loginBodyContent} showsVerticalScrollIndicator={false}>
+        <Text style={S.loginEmoji}>🔒</Text>
+        <Text style={S.loginTitle}>Nuova password</Text>
+        <Text style={S.loginDesc}>Scegli una nuova password per il tuo account</Text>
+        <View style={S.loginBox}>
+          <Text style={S.formLabel}>NUOVA PASSWORD</Text>
+          <View style={{ position: 'relative' }}>
+            <input style={{ ...inputStyle, paddingRight: 44 }} placeholder="Almeno 6 caratteri" value={nuovaPassword} onChange={(e) => setNuovaPassword(e.target.value)} type={vedi ? 'text' : 'password'} />
+            <TouchableOpacity onPress={() => setVedi(!vedi)} style={{ position: 'absolute', right: 12, top: 0, bottom: 0, justifyContent: 'center' }}>
+              <Text style={{ fontSize: 18 }}>{vedi ? '🙈' : '👁️'}</Text>
+            </TouchableOpacity>
+          </View>
+          {errore ? <Text style={S.errore}>{errore}</Text> : null}
+          <TouchableOpacity style={S.checkoutBtn} onPress={salva}>
+            <Text style={S.checkoutText}>{loading ? 'Attendi...' : 'Salva nuova password'}</Text>
+          </TouchableOpacity>
+        </View>
+      </ScrollView>
+    </View>
+  );
+}
+const ListaProdotti = React.memo(function ListaProdotti({ prodotti, cat, conAggiunte, onAdd, onAggiunte }) {
+  return (
+    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      <Text style={S.catTitolo}>{CAT_EMOJI[cat]} {cat}</Text>
+      {cat === 'Pane del Forno' && (
+        <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 14 }}>
+          <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Solo su preordine</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3 }}>Il pane va prenotato per il giorno dopo. Ritiro in pizzeria al mattino o la sera.</Text>
+        </View>
+      )}
+      {prodotti.map(p => (
+        <View key={p.id} style={S.card}>
+          <View style={S.cardLeft}>
+            <View style={{ width: 46, height: 46, borderRadius: 12, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
+              <Text style={{ fontSize: 22 }}>{CAT_EMOJI[cat]}</Text>
+            </View>
+          </View>
+          <View style={S.cardBody}>
+            <Text style={S.cardName}>{p.name}</Text>
+            {p.desc ? <Text style={S.cardDesc}>{p.desc}</Text> : null}
+            <Text style={S.cardPrice}>€ {p.price.toFixed(2)}</Text>
+          </View>
+          <TouchableOpacity style={S.addBtn} onPress={() => conAggiunte ? onAggiunte(p) : onAdd(p)}>
+            <Text style={S.addBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+      ))}
+      <View style={{ height: 20 }} />
+    </ScrollView>
+  );
+});
+function MenuScreen({ cat, setCat, combo, combosConfermate, cart, confermaCombo, add, setProdottoAggiunte }) {
+  const prodotti = MENU[cat] || [];
+  const conAggiunte = CATEGORIE_CON_AGGIUNTE.includes(cat);
+  const totCombo = (pred) => cart.filter(c => pred(c.id)).reduce((s, c) => s + c.qty, 0);
+  const base = combosConfermate * 4;
+  const pizzeCombo = combo ? Math.max(0, totCombo(isPizzaCombo) - base) : 0;
+  const dolciCombo = combo ? Math.max(0, totCombo(isDolceCombo) - base) : 0;
+  const bibiteCombo = combo ? Math.max(0, totCombo(isBibitaCombo) - base) : 0;
+  const comboCompleta = combo && pizzeCombo >= combo.pizze && dolciCombo >= combo.dolci && bibiteCombo >= combo.bibite;
+  return (
+    <View style={{ flex: 1 }}>
+      {combo && (
+        <View style={{ backgroundColor: C.rosso, paddingHorizontal: 16, paddingVertical: 10 }}>
+          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13, fontFamily: FONT_TESTO, marginBottom: 6 }}>🎁 Combo Famiglia in corso</Text>
+          <View style={{ flexDirection: 'row', gap: 8 }}>
+            <View style={{ flex: 1, backgroundColor: pizzeCombo >= combo.pizze ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🍕 {pizzeCombo}/{combo.pizze}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: dolciCombo >= combo.dolci ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🍰 {dolciCombo}/{combo.dolci}</Text>
+            </View>
+            <View style={{ flex: 1, backgroundColor: bibiteCombo >= combo.bibite ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🥤 {bibiteCombo}/{combo.bibite}</Text>
+            </View>
+          </View>
+          {comboCompleta && (
+            <TouchableOpacity onPress={confermaCombo} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 8, marginTop: 8, alignItems: 'center' }}>
+              <Text style={{ color: C.verde, fontWeight: '900', fontSize: 13 }}>✓ Conferma combo</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      )}
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: 'center' }}>
+        {Object.keys(MENU).map(c => (
+          <TouchableOpacity key={c} onPress={() => setCat(c)} style={[S.catPill, cat === c && S.catPillActive]}>
+            <Text style={{ fontSize: 15 }}>{CAT_EMOJI[c]}</Text>
+            <Text style={[S.catPillText, cat === c && S.catPillTextActive]}>{c}</Text>
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+      <ListaProdotti prodotti={prodotti} cat={cat} conAggiunte={conAggiunte} onAdd={add} onAggiunte={setProdottoAggiunte} />
+    </View>
+  );
+}
 export default function App() {
-  const [utente, setUtenteRaw] = useState(() => {
-    try { const saved = typeof localStorage !== 'undefined' ? localStorage.getItem('pizzicata_utente') : null; return saved ? JSON.parse(saved) : null; } catch { return null; }
-  });
-  const setUtente = (u) => { setUtenteRaw(u); try { if (u) localStorage.setItem('pizzicata_utente', JSON.stringify(u)); else localStorage.removeItem('pizzicata_utente'); } catch {} };
+ const [utente, setUtenteRaw] = useState(null);
+  const [authCaricato, setAuthCaricato] = useState(false);
+  const setUtente = (u) => setUtenteRaw(u);
+
+  // carica i dati del cliente dalla sessione Auth
+  const caricaCliente = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session && session.user) {
+      const { data } = await supabase.from('clienti').select('*').eq('id', session.user.id).single();
+      if (data) {
+        setUtenteRaw({
+          id: data.id, telefono: data.telefono || '', nome: data.nome || '', cognome: data.cognome || '',
+          email: data.email || '', indirizzo: data.indirizzo || '', pagamento: data.pagamento || 'contanti',
+          allergie: data.allergie || '', premio: data.premio_attivo || '', compleanno: data.compleanno || '',
+        });
+      }
+    } else {
+      setUtenteRaw(null);
+    }
+    setAuthCaricato(true);
+  };
+
+  const [modalitaReset, setModalitaReset] = useState(false);
+
+  useEffect(() => {
+    caricaCliente();
+    const { data: listener } = supabase.auth.onAuthStateChange((evento) => {
+      if (evento === 'PASSWORD_RECOVERY') { setModalitaReset(true); }
+      caricaCliente();
+    });
+    return () => { listener.subscription.unsubscribe(); };
+  }, []);
   const [tab, setTab] = useState('home');
   const [cat, setCat] = useState('Pizze Rosse');
   const [cart, setCart] = useState([]);
@@ -1504,7 +1658,9 @@ export default function App() {
 
   const apertura = statoApertura(ora);
 
-  if (!utente) return <LoginScreen onLogin={setUtente} />;
+  if (!authCaricato) return null;
+  if (modalitaReset) return <ResetPasswordScreen onFatto={() => setModalitaReset(false)} />;
+  if (!utente) return <LoginScreen onLogin={caricaCliente} />;
 
   const add = (item) => {
     if (combo) {
@@ -1820,82 +1976,7 @@ export default function App() {
     </ScrollView>
   );
 
-  const Menu = () => {
-    const prodotti = MENU[cat] || [];
-    const conAggiunte = CATEGORIE_CON_AGGIUNTE.includes(cat);
-    const totCombo = (pred) => cart.filter(c => pred(c.id)).reduce((s, c) => s + c.qty, 0);
-    const base = combosConfermate * 4;
-    const pizzeCombo = combo ? Math.max(0, totCombo(isPizzaCombo) - base) : 0;
-    const dolciCombo = combo ? Math.max(0, totCombo(isDolceCombo) - base) : 0;
-    const bibiteCombo = combo ? Math.max(0, totCombo(isBibitaCombo) - base) : 0;
-    const comboCompleta = combo && pizzeCombo >= combo.pizze && dolciCombo >= combo.dolci && bibiteCombo >= combo.bibite;
-    return (
-      <View style={{ flex: 1 }}>
-        {combo && (
-          <View style={{ backgroundColor: C.rosso, paddingHorizontal: 16, paddingVertical: 10 }}>
-            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13, fontFamily: FONT_TESTO, marginBottom: 6 }}>🎁 Combo Famiglia in corso</Text>
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <View style={{ flex: 1, backgroundColor: pizzeCombo >= combo.pizze ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🍕 {pizzeCombo}/{combo.pizze}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: dolciCombo >= combo.dolci ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🍰 {dolciCombo}/{combo.dolci}</Text>
-              </View>
-              <View style={{ flex: 1, backgroundColor: bibiteCombo >= combo.bibite ? C.verde : 'rgba(255,255,255,0.2)', borderRadius: 8, padding: 6, alignItems: 'center' }}>
-                <Text style={{ color: '#fff', fontSize: 11, fontWeight: '700' }}>🥤 {bibiteCombo}/{combo.bibite}</Text>
-              </View>
-            </View>
-            {comboCompleta && (
-              <TouchableOpacity onPress={confermaCombo} style={{ backgroundColor: '#fff', borderRadius: 8, padding: 8, marginTop: 8, alignItems: 'center' }}>
-                <Text style={{ color: C.verde, fontWeight: '900', fontSize: 13 }}>✓ Conferma combo</Text>
-              </TouchableOpacity>
-            )}
-          </View>
-        )}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: 'center' }}>
-          {Object.keys(MENU).map(c => (
-            <TouchableOpacity key={c} onPress={() => setCat(c)} style={[S.catPill, cat === c && S.catPillActive]}>
-              <Text style={{ fontSize: 15 }}>{CAT_EMOJI[c]}</Text>
-              <Text style={[S.catPillText, cat === c && S.catPillTextActive]}>{c}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-        <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-          <Text style={S.catTitolo}>{CAT_EMOJI[cat]} {cat}</Text>
-          {cat === 'Pane del Forno' && (
-            <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 14 }}>
-              <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Solo su preordine</Text>
-              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3 }}>Il pane va prenotato per il giorno dopo. Ritiro in pizzeria al mattino o la sera.</Text>
-            </View>
-          )}
-          {prodotti.map(p => (
-            <View key={p.id} style={S.card}>
-              <View style={S.cardLeft}>
-                <View style={{ width: 46, height: 46, borderRadius: 12, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
-                  <Text style={{ fontSize: 22 }}>{CAT_EMOJI[cat]}</Text>
-                </View>
-              </View>
-              <View style={S.cardBody}>
-                <Text style={S.cardName}>{p.name}</Text>
-                {p.desc ? <Text style={S.cardDesc}>{p.desc}</Text> : null}
-                <Text style={S.cardPrice}>€ {p.price.toFixed(2)}</Text>
-              </View>
-              {conAggiunte ? (
-                <TouchableOpacity style={S.addBtn} onPress={() => setProdottoAggiunte(p)}>
-                  <Text style={S.addBtnText}>+</Text>
-                </TouchableOpacity>
-              ) : (
-                <TouchableOpacity style={S.addBtn} onPress={() => add(p)}>
-                  <Text style={S.addBtnText}>+</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-          ))}
-          <View style={{ height: 20 }} />
-        </ScrollView>
-      </View>
-    );
-  };
+  
 
   const Offers = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
@@ -2039,7 +2120,7 @@ export default function App() {
           <Text style={{ fontSize: 18, color: C.oro }}>→</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity onPress={() => { setUtente(null); setCart([]); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
+        <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setCart([]); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
           <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -2123,7 +2204,7 @@ export default function App() {
 
   const screens = {
     home: <Home />,
-    menu: <Menu />,
+    menu: <MenuScreen cat={cat} setCat={setCat} combo={combo} combosConfermate={combosConfermate} cart={cart} confermaCombo={confermaCombo} add={add} setProdottoAggiunte={setProdottoAggiunte} />,
     offers: <Offers />,
     profilo: <Profilo />,
     ordini: <Ordini />,
@@ -2217,7 +2298,7 @@ export default function App() {
                   <View style={S.navBadge}><Text style={S.navBadgeText}>{cartN}</Text></View>
                 )}
               </View>
-              <Text style={[S.navLabel, attivo && { color: C.rosso, fontWeight: '800' }]}>{n.label}</Text>
+              <Text style={[S.navLabel, attivo && { color: C.oroChiaro, fontWeight: '800' }]}>{n.label}</Text>
             </TouchableOpacity>
           );
         })}
@@ -2343,10 +2424,10 @@ const S = StyleSheet.create({
   loginDesc: { fontFamily: FONT_TESTO, fontSize: 14, color: C.grigio, textAlign: 'center', marginTop: 6, marginBottom: 24, lineHeight: 20 },
   loginBox: { width: '100%' },
 
-  navbar: { flexDirection: 'row', backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E8D5B0', paddingTop: 8, paddingBottom: 10, paddingHorizontal: 4 },
+  navbar: { flexDirection: 'row', backgroundColor: C.rosso, borderTopWidth: 1, borderTopColor: C.rossoScuro, paddingTop: 8, paddingBottom: 10, paddingHorizontal: 4 },
   navItem: { flex: 1, alignItems: 'center', gap: 3 },
   navIcon: { fontSize: 22 },
-  navLabel: { fontFamily: FONT_TESTO, fontSize: 10, fontWeight: '600', color: C.grigio },
+  navLabel: { fontFamily: FONT_TESTO, fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.7)' },
   navBadge: { position: 'absolute', top: -6, right: -10, backgroundColor: C.oro, borderRadius: 9, minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
   navBadgeText: { color: '#fff', fontSize: 10, fontWeight: '900' },
 });

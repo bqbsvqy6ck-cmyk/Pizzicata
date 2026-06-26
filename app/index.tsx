@@ -1,6 +1,16 @@
 import { createClient } from '@supabase/supabase-js';
 import React, { useEffect, useRef, useState } from 'react';
 import { ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+if (typeof document !== 'undefined' && !document.getElementById('pizzicata-anim')) {
+  const style = document.createElement('style');
+  style.id = 'pizzicata-anim';
+  style.textContent = `
+    @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes imgFloat { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.08) rotate(3deg); } }
+    @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+  `;
+  document.head.appendChild(style);
+}
 
 const supabase = createClient(
   'https://wjbmcqzyismcmxbcndtw.supabase.co',
@@ -851,35 +861,35 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
           {cart.map(item => {
             const rimovibile = CATEGORIE_RIMOVIBILI.includes(item.categoria) && ingredientiDi(item).length > 0;
             return (
-            <View key={item.cartKey} style={S.cartCard}>
-              <View style={{ width: 44, height: 44, borderRadius: 12, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
-                <Text style={{ fontSize: 22 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
+            <View key={item.cartKey} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.25)' }}>
+              <View style={{ width: 52, height: 52, borderRadius: 15, background: 'linear-gradient(160deg, #FBEFD7 0%, #F5E2BE 100%)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(200,150,30,0.2)' }}>
+                <Text style={{ fontSize: 26 }}>{item.id >= 200 ? '🍞' : '🍕'}</Text>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={S.cartName}>{item.name}</Text>
-                {item.integrale && <Text style={S.cartExtra}>+ Impasto integrale</Text>}
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: '700', color: C.marrone }}>{item.name}</Text>
+                {item.integrale && <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.oro, marginTop: 1 }}>+ Impasto integrale</Text>}
                 {item.aggiunte && item.aggiunte.length > 0 && (
-                  <Text style={S.cartExtra}>+ {item.aggiunte.map(a => a.nome).join(', ')}</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.oro, marginTop: 1 }}>+ {item.aggiunte.map(a => a.nome).join(', ')}</Text>
                 )}
                 {item.rimozioni && item.rimozioni.length > 0 && (
-                  <Text style={[S.cartExtra, { color: '#C0392B' }]}>− senza {item.rimozioni.join(', ')}</Text>
+                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: '#C0392B', marginTop: 1 }}>− senza {item.rimozioni.join(', ')}</Text>
                 )}
-                <Text style={S.cartPrice}>€ {(item.price * item.qty).toFixed(2)}</Text>
+                <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.rosso, marginTop: 5 }}>€ {(item.price * item.qty).toFixed(2)}</Text>
                 {rimovibile && (
-                  <TouchableOpacity onPress={() => setProdRimozione(item)} style={{ marginTop: 4 }}>
+                  <TouchableOpacity onPress={() => setProdRimozione(item)} style={{ marginTop: 5 }}>
                     <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.rosso, fontWeight: '700' }}>
                       {item.rimozioni && item.rimozioni.length > 0 ? '✏️ Modifica ingredienti' : '➖ Vuoi rimuovere un ingrediente?'}
                     </Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <View style={S.qtyCtrl}>
-                <TouchableOpacity style={S.qtyMinus} onPress={() => removeQty(item.cartKey)}>
-                  <Text style={S.qtyMinusText}>−</Text>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 4 }}>
+                <TouchableOpacity style={{ width: 30, height: 30, borderRadius: 10, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', boxShadow: '0 1px 3px rgba(60,26,0,0.1)' }} onPress={() => removeQty(item.cartKey)}>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: C.marrone, lineHeight: 22 }}>−</Text>
                 </TouchableOpacity>
-                <Text style={S.qtyN}>{item.qty}</Text>
-                <TouchableOpacity style={S.qtyPlus} onPress={() => addQty(item.cartKey)}>
-                  <Text style={S.qtyPlusText}>+</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: '800', color: C.marrone, minWidth: 18, textAlign: 'center' }}>{item.qty}</Text>
+                <TouchableOpacity style={{ width: 30, height: 30, borderRadius: 10, background: 'linear-gradient(145deg, #A02020, #7E1414)', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(139,26,26,0.3)' }} onPress={() => addQty(item.cartKey)}>
+                  <Text style={{ fontSize: 20, fontWeight: '900', color: '#fff', lineHeight: 22 }}>+</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -1298,7 +1308,7 @@ function PannelloAggiunte({ prodotto, onConferma, onChiudi }) {
           })}
         </div>
         <div style={{ padding: '14px 20px', borderTop: '1px solid rgba(0,0,0,0.08)', background: '#FBF6EC' }}>
-          <button onClick={() => onConferma(prodotto, sel, integrale)} style={{ width: '100%', background: '#8B1A1A', color: 'white', border: 'none', borderRadius: 14, padding: '15px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 20, paddingRight: 20 }}>
+         <button onClick={() => onConferma(prodotto, sel, integrale)} style={{ width: '100%', background: 'linear-gradient(145deg, #A02020, #7E1414)', color: 'white', border: 'none', borderRadius: 16, padding: '16px', fontSize: 16, fontWeight: 800, cursor: 'pointer', fontFamily: 'inherit', display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingLeft: 20, paddingRight: 20, boxShadow: '0 4px 14px rgba(139,26,26,0.35)' }}>
             <span>Aggiungi al carrello</span>
             <span>€ {totale.toFixed(2)}</span>
           </button>
@@ -1501,34 +1511,53 @@ function ResetPasswordScreen({ onFatto }) {
     </View>
   );
 }
+function CardProdotto({ p, cat, conAggiunte, onAdd, onAggiunte }) {
+  const [aggiunto, setAggiunto] = useState(false);
+  const premi = () => {
+    if (conAggiunte) { onAggiunte(p); return; }
+    onAdd(p);
+    setAggiunto(true);
+    setTimeout(() => setAggiunto(false), 900);
+  };
+  return (
+  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.25)', position: 'relative', animationName: 'cardIn', animationDuration: '0.45s', animationFillMode: 'both' }}>
+      {cat === 'Limited Edition' && (
+        <View style={{ position: 'absolute', top: 10, right: 14, background: 'linear-gradient(135deg, #C8961E, #B07d10)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 10 }}>
+          <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>🔥 TOP</Text>
+        </View>
+      )}
+      <View style={{ width: 60, height: 60, borderRadius: 16, background: 'linear-gradient(160deg, #FBEFD7 0%, #F5E2BE 100%)', alignItems: 'center', justifyContent: 'center', marginRight: 14, borderWidth: 1, borderColor: 'rgba(200,150,30,0.2)' }}>
+        <Text style={{ fontSize: 28, animationName: 'imgFloat', animationDuration: '4s', animationIterationCount: 'infinite' }}>{CAT_EMOJI[cat]}</Text>
+      </View>
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 16, fontWeight: '700', color: C.marrone, letterSpacing: 0.2 }}>{p.name}</Text>
+        {p.desc ? <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: '#A89878', marginTop: 3, lineHeight: 17 }}>{p.desc}</Text> : null}
+        <Text style={{ fontFamily: FONT_TITOLO, fontSize: 19, fontWeight: '900', color: C.rosso, marginTop: 7 }}>€ {p.price.toFixed(2)}</Text>
+      </View>
+      <TouchableOpacity activeOpacity={0.7} onPress={premi} style={{ width: 40, height: 40, borderRadius: 20, background: aggiunto ? 'linear-gradient(145deg, #2C8A3D, #1c6b29)' : 'linear-gradient(145deg, #A02020, #7E1414)', alignItems: 'center', justifyContent: 'center', boxShadow: aggiunto ? '0 3px 8px rgba(44,138,61,0.4)' : '0 3px 8px rgba(139,26,26,0.35)', transform: aggiunto ? 'scale(1.1)' : 'scale(1)', transition: 'all 0.25s' }}>
+        <Text style={{ color: '#fff', fontSize: aggiunto ? 18 : 24, fontWeight: aggiunto ? '700' : '300', lineHeight: 26, marginTop: -2 }}>{aggiunto ? '✓' : '+'}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+}
+
 const ListaProdotti = React.memo(function ListaProdotti({ prodotti, cat, conAggiunte, onAdd, onAggiunte }) {
   return (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-      <Text style={S.catTitolo}>{CAT_EMOJI[cat]} {cat}</Text>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 18, marginBottom: 16 }}>
+        <Text style={{ fontFamily: FONT_TITOLO, fontSize: 25, fontWeight: '900', color: C.marrone }}>{cat}</Text>
+        <View style={{ flex: 1, height: 1, background: 'linear-gradient(90deg, #E8C97A, transparent)' }} />
+      </View>
       {cat === 'Pane del Forno' && (
-        <View style={{ backgroundColor: '#FFF8E7', borderRadius: 12, padding: 12, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 14 }}>
-          <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '700' }}>🍞 Solo su preordine</Text>
-          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3 }}>Il pane va prenotato per il giorno dopo. Ritiro in pizzeria al mattino o la sera.</Text>
+        <View style={{ backgroundColor: '#FFFDF8', borderRadius: 18, padding: 14, borderWidth: 1, borderColor: '#F0E2C0', marginBottom: 16 }}>
+          <Text style={{ fontSize: 12, color: '#8B6914', fontWeight: '800' }}>🍞 Solo su preordine</Text>
+          <Text style={{ fontSize: 11, color: C.grigio, marginTop: 3, lineHeight: 16 }}>Il pane va prenotato per il giorno dopo. Ritiro in pizzeria al mattino o la sera.</Text>
         </View>
       )}
       {prodotti.map(p => (
-        <View key={p.id} style={S.card}>
-          <View style={S.cardLeft}>
-            <View style={{ width: 46, height: 46, borderRadius: 12, background: 'linear-gradient(160deg, #A82020 0%, #6E1212 100%)', backgroundColor: '#8B1A1A', alignItems: 'center', justifyContent: 'center' }}>
-              <Text style={{ fontSize: 22 }}>{CAT_EMOJI[cat]}</Text>
-            </View>
-          </View>
-          <View style={S.cardBody}>
-            <Text style={S.cardName}>{p.name}</Text>
-            {p.desc ? <Text style={S.cardDesc}>{p.desc}</Text> : null}
-            <Text style={S.cardPrice}>€ {p.price.toFixed(2)}</Text>
-          </View>
-          <TouchableOpacity style={S.addBtn} onPress={() => conAggiunte ? onAggiunte(p) : onAdd(p)}>
-            <Text style={S.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
+        <CardProdotto key={p.id} p={p} cat={cat} conAggiunte={conAggiunte} onAdd={onAdd} onAggiunte={onAggiunte} />
       ))}
-      <View style={{ height: 20 }} />
+      <View style={{ height: 24 }} />
     </ScrollView>
   );
 });
@@ -1564,13 +1593,21 @@ function MenuScreen({ cat, setCat, combo, combosConfermate, cart, confermaCombo,
           )}
         </View>
       )}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={S.catBar} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, alignItems: 'center' }}>
-        {Object.keys(MENU).map(c => (
-          <TouchableOpacity key={c} onPress={() => setCat(c)} style={[S.catPill, cat === c && S.catPillActive]}>
-            <Text style={{ fontSize: 15 }}>{CAT_EMOJI[c]}</Text>
-            <Text style={[S.catPillText, cat === c && S.catPillTextActive]}>{c}</Text>
-          </TouchableOpacity>
-        ))}
+     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ backgroundColor: 'transparent', paddingVertical: 14, maxHeight: 64, flexGrow: 0 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 10, alignItems: 'center' }}>
+        {Object.keys(MENU).map(c => {
+          const attiva = cat === c;
+          return (
+            <TouchableOpacity key={c} activeOpacity={0.7} onPress={() => setCat(c)} style={{
+              flexDirection: 'row', alignItems: 'center', gap: 7, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 22,
+              backgroundColor: attiva ? C.rosso : '#FFFFFF',
+              borderWidth: 1, borderColor: attiva ? C.rosso : 'rgba(232,201,122,0.4)',
+              boxShadow: attiva ? '0 3px 10px rgba(139,26,26,0.25)' : '0 1px 4px rgba(60,26,0,0.04)',
+            }}>
+              <Text style={{ fontSize: 15 }}>{CAT_EMOJI[c]}</Text>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: attiva ? '#fff' : '#9A8A6A' }}>{c}</Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
       <ListaProdotti prodotti={prodotti} cat={cat} conAggiunte={conAggiunte} onAdd={add} onAggiunte={setProdottoAggiunte} />
     </View>
@@ -2041,7 +2078,7 @@ export default function App() {
           </View>
         </View>
       </View>
-      {(!utente.compleanno || !utente.compleanno.trim()) && <View style={{ backgroundColor: '#FFF8E7', borderRadius: 16, padding: 16, borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 24 }}>
+    {(!utente.compleanno || !utente.compleanno.trim()) && <View style={{ backgroundColor: '#FFFDF8', borderRadius: 20, padding: 18, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)', borderLeftWidth: 4, borderLeftColor: C.oro, marginBottom: 24 }}>
         <Text style={{ fontSize: 30, marginBottom: 6 }}>🎂</Text>
         <Text style={{ fontFamily: FONT_TITOLO, fontSize: 18, fontWeight: '900', color: C.marrone }}>Sconto Compleanno</Text>
         <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginTop: 4 }}>Nel giorno del tuo compleanno hai uno sconto del 15% sul tuo ordine, riservato ai clienti che hanno ordinato almeno 50€ nell'ultimo anno. Un regalo per i nostri clienti più affezionati!</Text>
@@ -2110,7 +2147,7 @@ export default function App() {
               <View style={{ height: 12, backgroundColor: '#F0E8D8', borderRadius: 6, overflow: 'hidden' }}>
                 <View style={{ width: `${perc}%`, height: '100%', background: sbloccato ? 'linear-gradient(90deg, #C8961E, #E8B84B)' : 'linear-gradient(90deg, #8B1A1A, #C0392B)' }} />
               </View>
-              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 6, textAlign: 'right' }}>€ {speso.toFixed(2)} / € {obiettivo.toFixed(2)} (ultimi 12 mesi)</Text>
+              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 6, textAlign: 'right' }}>€ {Math.min(speso, obiettivo).toFixed(2)} / € {obiettivo.toFixed(2)} (ultimi 12 mesi)</Text>
             </View>
           );
         })()}
@@ -2298,7 +2335,7 @@ export default function App() {
           </View>
           <View>
             <Text style={S.headerTitle}>Pizzicata</Text>
-            <Text style={S.headerSub}>{apertura.aperto ? '🟢 Aperto ora' : '🔴 Chiuso · preordina'}</Text>
+            <Text style={[S.headerSub, apertura.aperto && { animationName: 'pulseDot', animationDuration: '1.8s', animationIterationCount: 'infinite' }]}>{apertura.aperto ? '🟢 Aperto ora' : '🔴 Chiuso · preordina'}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => setMostraOrari(true)} style={{ padding: 8 }}>
@@ -2371,14 +2408,14 @@ export default function App() {
 }
 
 const S = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F2E8D5', maxWidth: 520, marginHorizontal: 'auto', width: '100%' },
+  root: { flex: 1, backgroundColor: '#FBF6EC', maxWidth: 520, marginHorizontal: 'auto', width: '100%' },
   scroll: { flex: 1, paddingHorizontal: 16 },
 
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 14, paddingBottom: 14 },
   headerTitle: { fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: '900', color: '#F2E8D5' },
   headerSub: { fontFamily: FONT_TESTO, fontSize: 11, color: 'rgba(242,232,213,0.85)' },
 
-  profiloMini: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#fff', borderRadius: 14, padding: 12, marginTop: 14, borderWidth: 1, borderColor: '#E8D5B0' },
+ profiloMini: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FFFFFF', borderRadius: 18, padding: 14, marginTop: 14, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)' },
   profiloMiniIcon: { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
   profiloMiniNome: { fontFamily: FONT_TESTO, fontSize: 15, fontWeight: '800', color: C.marrone },
   profiloMiniSub: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio },
@@ -2398,7 +2435,7 @@ const S = StyleSheet.create({
   comboLi: { fontFamily: FONT_TESTO, fontSize: 14, color: 'rgba(242,232,213,0.92)', lineHeight: 24 },
   comboCta: { fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.oroChiaro, marginTop: 14 },
 
-  paneCardNew: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#fff', borderRadius: 16, padding: 16, borderWidth: 1, borderColor: '#E8D5B0' },
+  paneCardNew: { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)' },
   paneTitoloNew: { fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.marrone },
   paneSubNew: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio },
   paneBtnNew: { backgroundColor: C.oro, borderRadius: 12, paddingVertical: 10, paddingHorizontal: 14 },
@@ -2412,7 +2449,7 @@ const S = StyleSheet.create({
   tierSub: { fontFamily: FONT_TESTO, fontSize: 12, color: 'rgba(242,232,213,0.8)' },
 
   tilesRow: { flexDirection: 'row', gap: 12 },
-  tileNew: { flex: 1, borderRadius: 16, padding: 14, borderWidth: 1, borderColor: '#E8D5B0' },
+  tileNew: { flex: 1, borderRadius: 20, padding: 14, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)' },
   tileIconCircle: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
   tileTitleNew: { fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: C.marrone },
   tileValNew: { fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 2 },
@@ -2444,7 +2481,7 @@ const S = StyleSheet.create({
   qtyPlus: { width: 30, height: 30, borderRadius: 9, backgroundColor: C.rosso, alignItems: 'center', justifyContent: 'center' },
   qtyPlusText: { fontSize: 20, fontWeight: '900', color: '#fff', lineHeight: 22 },
 
-  formBox: { backgroundColor: '#fff', borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1, borderColor: '#E8D5B0' },
+  formBox: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 16, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)' },
   formLabel: { fontFamily: FONT_TESTO, fontSize: 11, fontWeight: '800', letterSpacing: 1, color: C.grigio, marginBottom: 8, textTransform: 'uppercase' },
   typeBtn: { flex: 1, alignItems: 'center', gap: 4, paddingVertical: 12, borderRadius: 12, backgroundColor: '#FBF4E6', borderWidth: 2, borderColor: '#E8D5B0' },
   typeBtnActive: { backgroundColor: C.rosso, borderColor: C.rosso },
@@ -2461,11 +2498,11 @@ const S = StyleSheet.create({
   pagLabel: { fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone },
   pagSub: { fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio },
 
-  totalCard: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, borderWidth: 1, borderColor: '#E8D5B0' },
+  totalCard: { backgroundColor: '#FFFFFF', borderRadius: 20, padding: 18, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.3)' },
   totalRow: { fontFamily: FONT_TESTO, fontSize: 14, color: C.grigio },
-  totalBig: { fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: '900', color: C.marrone },
+  totalBig: { fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: '900', color: C.marrone },
 
-  checkoutBtn: { backgroundColor: C.rosso, borderRadius: 16, padding: 17, alignItems: 'center', marginBottom: 8, boxShadow: '0 6px 18px rgba(139,26,26,0.3)' },
+  checkoutBtn: { background: 'linear-gradient(145deg, #A02020, #7E1414)', backgroundColor: C.rosso, borderRadius: 18, padding: 18, alignItems: 'center', marginBottom: 8, boxShadow: '0 6px 20px rgba(139,26,26,0.35)' },
   checkoutText: { fontFamily: FONT_TESTO, fontSize: 16, fontWeight: '900', color: '#fff' },
   checkoutBtnAlt: { backgroundColor: C.rosso, borderRadius: 16, padding: 17, alignItems: 'center' },
 

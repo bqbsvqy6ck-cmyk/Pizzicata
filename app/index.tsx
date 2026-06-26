@@ -7,7 +7,10 @@ if (typeof document !== 'undefined' && !document.getElementById('pizzicata-anim'
   style.textContent = `
     @keyframes cardIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes imgFloat { 0%,100% { transform: scale(1) rotate(0deg); } 50% { transform: scale(1.08) rotate(3deg); } }
-    @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+    @keyframes pulseDot { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+    .anim-card { animation: cardIn 0.45s ease both; }
+    .anim-float { animation: imgFloat 4s ease-in-out infinite; display: inline-block; }
+    .anim-pulse { animation: pulseDot 1.8s ease-in-out infinite; }
   `;
   document.head.appendChild(style);
 }
@@ -1520,14 +1523,14 @@ function CardProdotto({ p, cat, conAggiunte, onAdd, onAggiunte }) {
     setTimeout(() => setAggiunto(false), 900);
   };
   return (
-  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.25)', position: 'relative', animationName: 'cardIn', animationDuration: '0.45s', animationFillMode: 'both' }}>
+  <View className="anim-card" style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFFFFF', borderRadius: 20, padding: 14, marginBottom: 12, boxShadow: '0 2px 12px rgba(60,26,0,0.06)', borderWidth: 1, borderColor: 'rgba(232,201,122,0.25)', position: 'relative' }}>
       {cat === 'Limited Edition' && (
         <View style={{ position: 'absolute', top: 10, right: 14, background: 'linear-gradient(135deg, #C8961E, #B07d10)', paddingHorizontal: 9, paddingVertical: 3, borderRadius: 10 }}>
           <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>🔥 TOP</Text>
         </View>
       )}
       <View style={{ width: 60, height: 60, borderRadius: 16, background: 'linear-gradient(160deg, #FBEFD7 0%, #F5E2BE 100%)', alignItems: 'center', justifyContent: 'center', marginRight: 14, borderWidth: 1, borderColor: 'rgba(200,150,30,0.2)' }}>
-        <Text style={{ fontSize: 28, animationName: 'imgFloat', animationDuration: '4s', animationIterationCount: 'infinite' }}>{CAT_EMOJI[cat]}</Text>
+        <Text style={{ fontSize: 28 }}>{CAT_EMOJI[cat]}</Text>
       </View>
       <View style={{ flex: 1, paddingRight: 8 }}>
         <Text style={{ fontFamily: FONT_TESTO, fontSize: 16, fontWeight: '700', color: C.marrone, letterSpacing: 0.2 }}>{p.name}</Text>
@@ -2335,7 +2338,7 @@ export default function App() {
           </View>
           <View>
             <Text style={S.headerTitle}>Pizzicata</Text>
-            <Text style={[S.headerSub, apertura.aperto && { animationName: 'pulseDot', animationDuration: '1.8s', animationIterationCount: 'infinite' }]}>{apertura.aperto ? '🟢 Aperto ora' : '🔴 Chiuso · preordina'}</Text>
+          <Text className={apertura.aperto ? 'anim-pulse' : undefined} style={S.headerSub}>{apertura.aperto ? '🟢 Aperto ora' : '🔴 Chiuso · preordina'}</Text>
           </View>
         </View>
         <TouchableOpacity onPress={() => setMostraOrari(true)} style={{ padding: 8 }}>

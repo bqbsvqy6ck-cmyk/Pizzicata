@@ -637,6 +637,7 @@ function LoginScreen({ onLogin }) {
     if (tel.replace(/\s/g, '').length < 9) { setErrore('Inserisci un numero di telefono valido'); return; }
     if (!indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo'); return; }
     if (!compleanno) { setErrore('Inserisci la data di compleanno'); return; }
+    if (compleanno.split('-')[1] === '00' || compleanno.split('-')[2] === '00' || compleanno.split('-').length < 3 || !compleanno.split('-')[1] || !compleanno.split('-')[2]) { setErrore('Scegli giorno e mese del compleanno'); return; }
     setLoading(true);
     const { data, error } = await supabase.auth.signUp({ email: email.trim().toLowerCase(), password });
     if (error) { setLoading(false); setErrore(error.message.includes('already') ? 'Email già registrata, accedi' : 'Errore: ' + error.message); return; }
@@ -695,9 +696,18 @@ function LoginScreen({ onLogin }) {
               <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE (facoltativo)</Text>
               <input style={inputStyle} placeholder="Es. glutine, lattosio..." value={allergie} onChange={(e) => setAllergie(e.target.value)} />
               <View style={{ height: 12 }} />
-              <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO *</Text>
-              <input style={inputStyle} value={compleanno} onChange={(e) => setCompleanno(e.target.value)} type="date" />
-              <Text style={{ fontSize: 11, color: '#C0392B', marginTop: 6, fontWeight: '700' }}>⚠️ Attenzione: la data di compleanno non potrà più essere modificata dopo la registrazione.</Text>
+              <Text style={S.formLabel}>🎂 COMPLEANNO (giorno e mese) *</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <select value={compleanno.split('-')[2] || ''} onChange={(e) => { const m = compleanno.split('-')[1] || '01'; setCompleanno('2000-' + m + '-' + e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                  <option value="">Giorno</option>
+                  {Array.from({ length: 31 }, (_, k) => String(k + 1).padStart(2, '0')).map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+                <select value={compleanno.split('-')[1] || ''} onChange={(e) => { const g = compleanno.split('-')[2] || '01'; setCompleanno('2000-' + e.target.value + '-' + g); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                  <option value="">Mese</option>
+                  {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((nome, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{nome}</option>)}
+                </select>
+              </View>
+              <Text style={{ fontSize: 11, color: '#C0392B', marginTop: 6, fontWeight: '700' }}>⚠️ Attenzione: il compleanno non potrà più essere modificato dopo la registrazione.</Text>
             </>
           )}
 
@@ -1819,7 +1829,7 @@ export default function App() {
           <Text style={S.profiloMiniNome}>Ciao {utente.nome}{utente.cognome ? ' ' + utente.cognome : ''}!</Text>
           <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
         </View>
-        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr} [{apertura.aperto ? 'APERTO' : 'CHIUSO'}]</Text>
+        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
       </TouchableOpacity>
 
       {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
@@ -2096,13 +2106,22 @@ export default function App() {
           <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO</Text>
           {compleannoBloccato ? (
             <>
-              <input style={{ ...inputStyle, backgroundColor: '#F0E8D8', color: C.grigio }} value={utente.compleanno} disabled readOnly />
-              <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Data salvata! Avrai uno sconto del 10% nel giorno del tuo compleanno.</Text>
+              <input style={{ ...inputStyle, backgroundColor: '#F0E8D8', color: C.grigio }} value={(() => { const p = utente.compleanno.split('-'); const mesi = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']; return p[2] && p[1] ? p[2] + ' ' + mesi[parseInt(p[1])] : utente.compleanno; })()} disabled readOnly />
+              <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Compleanno salvato! Avrai uno sconto del 10% nel giorno del tuo compleanno.</Text>
             </>
           ) : (
             <>
-              <input style={inputStyle} value={compleanno} onChange={(e) => setCompleanno(e.target.value)} type="date" />
-              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6 }}>Inseriscila per ricevere uno sconto nel giorno del tuo compleanno. Una volta salvata non potrà più essere modificata.</Text>
+              <View style={{ flexDirection: 'row', gap: 8 }}>
+                <select value={compleanno.split('-')[2] || ''} onChange={(e) => { const m = compleanno.split('-')[1] || '01'; setCompleanno('2000-' + m + '-' + e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                  <option value="">Giorno</option>
+                  {Array.from({ length: 31 }, (_, k) => String(k + 1).padStart(2, '0')).map(g => <option key={g} value={g}>{g}</option>)}
+                </select>
+                <select value={compleanno.split('-')[1] || ''} onChange={(e) => { const g = compleanno.split('-')[2] || '01'; setCompleanno('2000-' + e.target.value + '-' + g); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                  <option value="">Mese</option>
+                  {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((nome, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{nome}</option>)}
+                </select>
+              </View>
+              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6 }}>Inseriscilo per ricevere uno sconto nel giorno del tuo compleanno. Una volta salvato non potrà più essere modificato.</Text>
             </>
           )}
         </View>
@@ -2122,6 +2141,22 @@ export default function App() {
 
         <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setCart([]); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
           <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
+        </TouchableOpacity>
+        <TouchableOpacity onPress={async () => {
+          if (!window.confirm('Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile e cancellerà tutti i tuoi dati.')) return;
+          const { data: { session } } = await supabase.auth.getSession();
+          if (!session) { alert('Sessione scaduta, riaccedi.'); return; }
+          try {
+            const res = await fetch('https://wjbmcqzyismcmxbcndtw.supabase.co/functions/v1/elimina-account', {
+              method: 'POST',
+              headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+            });
+            const out = await res.json();
+            if (out.success) { alert('Account eliminato. Ci dispiace vederti andare.'); await supabase.auth.signOut(); setUtente(null); setCart([]); setTab('home'); }
+            else { alert('Errore: ' + (out.error || 'riprova')); }
+          } catch (e) { alert('Errore di connessione: ' + e); }
+        }} style={{ marginBottom: 30, alignItems: 'center', padding: 10 }}>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, textDecorationLine: 'underline' }}>Elimina account</Text>
         </TouchableOpacity>
       </ScrollView>
     );

@@ -547,6 +547,7 @@ const analizzaOrdineVocale = (testoParlato) => {
       if (aggNorm === 'prosciutto cotto') variantiAgg.push('cotto', 'prosciutto');
       if (aggNorm === 'rinforzo mozzarella') variantiAgg.push('mozzarella');
       if (aggNorm === 'salamino') variantiAgg.push('salame', 'salamino');
+      if (aggNorm === 'patatine fritte') variantiAgg.push('patatine', 'patate fritte', 'patatina');
       for (const va of variantiAgg) {
         if (segmento.includes(' ' + va + ' ') || segmento.includes(' ' + va) || segmento.endsWith(va)) {
           if (!aggiunteTrovate.find(a => a.nome === agg.nome)) aggiunteTrovate.push(agg);
@@ -1616,6 +1617,146 @@ function MenuScreen({ cat, setCat, combo, combosConfermate, cart, confermaCombo,
     </View>
   );
 }
+function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
+  const [nome, setNome] = useState(utente.nome || '');
+  const [cognome, setCognome] = useState(utente.cognome || '');
+  const [email, setEmail] = useState(utente.email || '');
+  const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
+  const [allergie, setAllergie] = useState(utente.allergie || '');
+  const [compleanno, setCompleanno] = useState(utente.compleanno || '');
+  const [salvato, setSalvato] = useState(false);
+  const [salvando, setSalvando] = useState(false);
+
+  const compleannoBloccato = !!(utente.compleanno && utente.compleanno.trim());
+
+  const salva = async () => {
+    setSalvando(true);
+    const update = { nome: nome.trim(), cognome: cognome.trim(), email: email.trim(), indirizzo: indirizzo.trim(), allergie: allergie.trim() };
+    if (!compleannoBloccato && compleanno) update.compleanno = compleanno;
+    const { error } = await supabase.from('clienti').update(update).eq('telefono', utente.telefono);
+    setSalvando(false);
+    if (error) { alert('Errore: ' + error.message); return; }
+    setUtente({ ...utente, ...update, compleanno: compleannoBloccato ? utente.compleanno : (compleanno || '') });
+    setSalvato(true); setTimeout(() => setSalvato(false), 2000);
+  };
+
+  return (
+    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 20 }}>
+        <View style={{ width: 80, height: 80, borderRadius: 40, background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+          <Text style={{ fontSize: 38 }}>👤</Text>
+        </View>
+        <Text style={{ fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: '900', color: C.marrone }}>{utente.nome} {utente.cognome}</Text>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio }}>{utente.telefono}</Text>
+      </View>
+
+      {utente.premio ? (
+        <View style={{ backgroundColor: '#FFF8E8', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 2, borderColor: C.oro, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <Text style={{ fontSize: 32 }}>🎁</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Hai un premio attivo!</Text>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>
+              {utente.premio === 'bibita' ? 'Bibita in omaggio' : utente.premio === 'bibita2' ? '2 bibite in omaggio' : utente.premio === 'sconto15' ? 'Sconto 15%' : utente.premio === 'compleanno' ? 'Sconto compleanno 10%' : 'Sconto 10%'} — lo userai al prossimo ordine
+            </Text>
+          </View>
+        </View>
+      ) : null}
+      {(() => {
+        const speso = utente.speso12Mesi || 0;
+        const obiettivo = 50;
+        const perc = Math.min(100, (speso / obiettivo) * 100);
+        const sbloccato = speso >= obiettivo;
+        return (
+          <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: sbloccato ? C.oro : '#E8D5B0' }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <Text style={{ fontSize: 22 }}>🎂</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Sconto compleanno 15%</Text>
+                <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>{sbloccato ? '✓ Sbloccato! Attivo nel giorno del tuo compleanno' : `Ordina ancora € ${(obiettivo - speso).toFixed(2)} per sbloccarlo`}</Text>
+              </View>
+            </View>
+            <View style={{ height: 12, backgroundColor: '#F0E8D8', borderRadius: 6, overflow: 'hidden' }}>
+              <View style={{ width: `${perc}%`, height: '100%', background: sbloccato ? 'linear-gradient(90deg, #C8961E, #E8B84B)' : 'linear-gradient(90deg, #8B1A1A, #C0392B)' }} />
+            </View>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 6, textAlign: 'right' }}>€ {Math.min(speso, obiettivo).toFixed(2)} / € {obiettivo.toFixed(2)} (ultimi 12 mesi)</Text>
+          </View>
+        );
+      })()}
+
+      <View style={S.formBox}>
+        <Text style={S.formLabel}>NOME</Text>
+        <input style={inputStyle} value={nome} onChange={(e) => setNome(e.target.value)} />
+        <View style={{ height: 12 }} />
+        <Text style={S.formLabel}>COGNOME</Text>
+        <input style={inputStyle} value={cognome} onChange={(e) => setCognome(e.target.value)} />
+        <View style={{ height: 12 }} />
+        <Text style={S.formLabel}>EMAIL</Text>
+        <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
+        <View style={{ height: 12 }} />
+        <Text style={S.formLabel}>INDIRIZZO</Text>
+        <input style={inputStyle} value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
+        <View style={{ height: 12 }} />
+        <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE</Text>
+        <input style={inputStyle} value={allergie} onChange={(e) => setAllergie(e.target.value)} placeholder="Es. glutine, lattosio..." />
+        <View style={{ height: 12 }} />
+        <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO</Text>
+        {compleannoBloccato ? (
+          <>
+            <input style={{ ...inputStyle, backgroundColor: '#F0E8D8', color: C.grigio }} value={(() => { const p = utente.compleanno.split('-'); const mesi = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']; return p[2] && p[1] ? p[2] + ' ' + mesi[parseInt(p[1])] : utente.compleanno; })()} disabled readOnly />
+            <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Compleanno salvato! Avrai uno sconto del 15% nel giorno del tuo compleanno (per chi ha ordinato almeno 50€ nell'ultimo anno).</Text>
+          </>
+        ) : (
+          <>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <select value={compleanno.split('-')[2] || ''} onChange={(e) => { const m = compleanno.split('-')[1] || '01'; setCompleanno('2000-' + m + '-' + e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                <option value="">Giorno</option>
+                {Array.from({ length: 31 }, (_, k) => String(k + 1).padStart(2, '0')).map(g => <option key={g} value={g}>{g}</option>)}
+              </select>
+              <select value={compleanno.split('-')[1] || ''} onChange={(e) => { const g = compleanno.split('-')[2] || '01'; setCompleanno('2000-' + e.target.value + '-' + g); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
+                <option value="">Mese</option>
+                {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((nome, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{nome}</option>)}
+              </select>
+            </View>
+            <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6 }}>Inseriscilo per ricevere uno sconto nel giorno del tuo compleanno. Una volta salvato non potrà più essere modificato.</Text>
+          </>
+        )}
+      </View>
+
+      <TouchableOpacity style={S.checkoutBtn} onPress={salva}>
+        <Text style={S.checkoutText}>{salvando ? 'Salvataggio...' : salvato ? '✓ Salvato!' : 'Salva modifiche'}</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={() => setTab('ordini')} style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#E8D5B0' }}>
+        <Text style={{ fontSize: 24 }}>📋</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>I miei ordini</Text>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Rivedi gli ordini passati</Text>
+        </View>
+        <Text style={{ fontSize: 18, color: C.oro }}>→</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
+      </TouchableOpacity>
+      <TouchableOpacity onPress={async () => {
+        if (!window.confirm('Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile e cancellerà tutti i tuoi dati.')) return;
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) { alert('Sessione scaduta, riaccedi.'); return; }
+        try {
+          const res = await fetch('https://wjbmcqzyismcmxbcndtw.supabase.co/functions/v1/elimina-account', {
+            method: 'POST',
+            headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+          });
+          const out = await res.json();
+          if (out.success) { alert('Account eliminato. Ci dispiace vederti andare.'); await supabase.auth.signOut(); setUtente(null); setTab('home'); }
+          else { alert('Errore: ' + (out.error || 'riprova')); }
+        } catch (e) { alert('Errore di connessione: ' + e); }
+      }} style={{ marginBottom: 30, alignItems: 'center', padding: 10 }}>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, textDecorationLine: 'underline' }}>Elimina account</Text>
+      </TouchableOpacity>
+    </ScrollView>
+  );
+}
 export default function App() {
  const [utente, setUtenteRaw] = useState(null);
   const [authCaricato, setAuthCaricato] = useState(false);
@@ -2089,146 +2230,7 @@ export default function App() {
     </ScrollView>
   );
 
-  const Profilo = () => {
-    const [nome, setNome] = useState(utente.nome || '');
-    const [cognome, setCognome] = useState(utente.cognome || '');
-    const [email, setEmail] = useState(utente.email || '');
-    const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
-    const [allergie, setAllergie] = useState(utente.allergie || '');
-    const [compleanno, setCompleanno] = useState(utente.compleanno || '');
-    const [salvato, setSalvato] = useState(false);
-    const [salvando, setSalvando] = useState(false);
 
-    const compleannoBloccato = !!(utente.compleanno && utente.compleanno.trim());
-
-    const salva = async () => {
-      setSalvando(true);
-      const update = { nome: nome.trim(), cognome: cognome.trim(), email: email.trim(), indirizzo: indirizzo.trim(), allergie: allergie.trim() };
-      if (!compleannoBloccato && compleanno) update.compleanno = compleanno;
-      const { error } = await supabase.from('clienti').update(update).eq('telefono', utente.telefono);
-      setSalvando(false);
-      if (error) { alert('Errore: ' + error.message); return; }
-      setUtente({ ...utente, ...update, compleanno: compleannoBloccato ? utente.compleanno : (compleanno || '') });
-      setSalvato(true); setTimeout(() => setSalvato(false), 2000);
-    };
-
-    return (
-      <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-        <View style={{ alignItems: 'center', marginTop: 12, marginBottom: 20 }}>
-          <View style={{ width: 80, height: 80, borderRadius: 40, background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-            <Text style={{ fontSize: 38 }}>👤</Text>
-          </View>
-          <Text style={{ fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: '900', color: C.marrone }}>{utente.nome} {utente.cognome}</Text>
-          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio }}>{utente.telefono}</Text>
-        </View>
-
-        {utente.premio ? (
-          <View style={{ backgroundColor: '#FFF8E8', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 2, borderColor: C.oro, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-            <Text style={{ fontSize: 32 }}>🎁</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Hai un premio attivo!</Text>
-              <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>
-                {utente.premio === 'bibita' ? 'Bibita in omaggio' : utente.premio === 'bibita2' ? '2 bibite in omaggio' : utente.premio === 'sconto15' ? 'Sconto 15%' : utente.premio === 'compleanno' ? 'Sconto compleanno 10%' : 'Sconto 10%'} — lo userai al prossimo ordine
-              </Text>
-            </View>
-          </View>
-        ) : null}
-        {(() => {
-          const speso = utente.speso12Mesi || 0;
-          const obiettivo = 50;
-          const perc = Math.min(100, (speso / obiettivo) * 100);
-          const sbloccato = speso >= obiettivo;
-          return (
-            <View style={{ backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, borderWidth: 1, borderColor: sbloccato ? C.oro : '#E8D5B0' }}>
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                <Text style={{ fontSize: 22 }}>🎂</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Sconto compleanno 15%</Text>
-                  <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio }}>{sbloccato ? '✓ Sbloccato! Attivo nel giorno del tuo compleanno' : `Ordina ancora € ${(obiettivo - speso).toFixed(2)} per sbloccarlo`}</Text>
-                </View>
-              </View>
-              <View style={{ height: 12, backgroundColor: '#F0E8D8', borderRadius: 6, overflow: 'hidden' }}>
-                <View style={{ width: `${perc}%`, height: '100%', background: sbloccato ? 'linear-gradient(90deg, #C8961E, #E8B84B)' : 'linear-gradient(90deg, #8B1A1A, #C0392B)' }} />
-              </View>
-              <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: C.grigio, marginTop: 6, textAlign: 'right' }}>€ {Math.min(speso, obiettivo).toFixed(2)} / € {obiettivo.toFixed(2)} (ultimi 12 mesi)</Text>
-            </View>
-          );
-        })()}
-
-        <View style={S.formBox}>
-          <Text style={S.formLabel}>NOME</Text>
-          <input style={inputStyle} value={nome} onChange={(e) => setNome(e.target.value)} />
-          <View style={{ height: 12 }} />
-          <Text style={S.formLabel}>COGNOME</Text>
-          <input style={inputStyle} value={cognome} onChange={(e) => setCognome(e.target.value)} />
-          <View style={{ height: 12 }} />
-          <Text style={S.formLabel}>EMAIL</Text>
-          <input style={inputStyle} value={email} onChange={(e) => setEmail(e.target.value)} type="email" />
-          <View style={{ height: 12 }} />
-          <Text style={S.formLabel}>INDIRIZZO</Text>
-          <input style={inputStyle} value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
-          <View style={{ height: 12 }} />
-          <Text style={S.formLabel}>ALLERGIE / INTOLLERANZE</Text>
-          <input style={inputStyle} value={allergie} onChange={(e) => setAllergie(e.target.value)} placeholder="Es. glutine, lattosio..." />
-          <View style={{ height: 12 }} />
-          <Text style={S.formLabel}>🎂 DATA DI COMPLEANNO</Text>
-          {compleannoBloccato ? (
-            <>
-              <input style={{ ...inputStyle, backgroundColor: '#F0E8D8', color: C.grigio }} value={(() => { const p = utente.compleanno.split('-'); const mesi = ['','Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre']; return p[2] && p[1] ? p[2] + ' ' + mesi[parseInt(p[1])] : utente.compleanno; })()} disabled readOnly />
-              <Text style={{ fontSize: 11, color: '#2C5A2E', marginTop: 6, fontWeight: '700' }}>🎉 Compleanno salvato! Avrai uno sconto del 15% nel giorno del tuo compleanno (per chi ha ordinato almeno 50€ nell'ultimo anno).</Text>
-            </>
-          ) : (
-            <>
-              <View style={{ flexDirection: 'row', gap: 8 }}>
-                <select value={compleanno.split('-')[2] || ''} onChange={(e) => { const m = compleanno.split('-')[1] || '01'; setCompleanno('2000-' + m + '-' + e.target.value); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
-                  <option value="">Giorno</option>
-                  {Array.from({ length: 31 }, (_, k) => String(k + 1).padStart(2, '0')).map(g => <option key={g} value={g}>{g}</option>)}
-                </select>
-                <select value={compleanno.split('-')[1] || ''} onChange={(e) => { const g = compleanno.split('-')[2] || '01'; setCompleanno('2000-' + e.target.value + '-' + g); }} style={{ ...inputStyle, height: 44, flex: 1 }}>
-                  <option value="">Mese</option>
-                  {['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'].map((nome, i) => <option key={i} value={String(i + 1).padStart(2, '0')}>{nome}</option>)}
-                </select>
-              </View>
-              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6 }}>Inseriscilo per ricevere uno sconto nel giorno del tuo compleanno. Una volta salvato non potrà più essere modificato.</Text>
-            </>
-          )}
-        </View>
-
-        <TouchableOpacity style={S.checkoutBtn} onPress={salva}>
-          <Text style={S.checkoutText}>{salvando ? 'Salvataggio...' : salvato ? '✓ Salvato!' : 'Salva modifiche'}</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={() => setTab('ordini')} style={{ backgroundColor: '#fff', borderRadius: 14, padding: 16, marginTop: 12, flexDirection: 'row', alignItems: 'center', gap: 12, borderWidth: 1, borderColor: '#E8D5B0' }}>
-          <Text style={{ fontSize: 24 }}>📋</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>I miei ordini</Text>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Rivedi gli ordini passati</Text>
-          </View>
-          <Text style={{ fontSize: 18, color: C.oro }}>→</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setCart([]); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
-          <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={async () => {
-          if (!window.confirm('Sei sicuro di voler eliminare il tuo account? Questa azione è irreversibile e cancellerà tutti i tuoi dati.')) return;
-          const { data: { session } } = await supabase.auth.getSession();
-          if (!session) { alert('Sessione scaduta, riaccedi.'); return; }
-          try {
-            const res = await fetch('https://wjbmcqzyismcmxbcndtw.supabase.co/functions/v1/elimina-account', {
-              method: 'POST',
-              headers: { 'Authorization': 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
-            });
-            const out = await res.json();
-            if (out.success) { alert('Account eliminato. Ci dispiace vederti andare.'); await supabase.auth.signOut(); setUtente(null); setCart([]); setTab('home'); }
-            else { alert('Errore: ' + (out.error || 'riprova')); }
-          } catch (e) { alert('Errore di connessione: ' + e); }
-        }} style={{ marginBottom: 30, alignItems: 'center', padding: 10 }}>
-          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, textDecorationLine: 'underline' }}>Elimina account</Text>
-        </TouchableOpacity>
-      </ScrollView>
-    );
-  };
 
   const Ordini = () => {
     const [ordini, setOrdini] = useState([]);
@@ -2309,7 +2311,7 @@ export default function App() {
     home: <Home />,
     menu: <MenuScreen cat={cat} setCat={setCat} combo={combo} combosConfermate={combosConfermate} cart={cart} confermaCombo={confermaCombo} add={add} setProdottoAggiunte={setProdottoAggiunte} />,
     offers: <Offers />,
-    profilo: <Profilo />,
+    profilo: <ProfiloScreen utente={utente} setUtente={setUtente} setTab={setTab} supabase={supabase} />,
     ordini: <Ordini />,
     cart: (
       <CartScreen

@@ -752,7 +752,7 @@ function LoginScreen({ onLogin }) {
     </View>
   );
 }
-function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, scontoCompleanno, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, ordered, setOrdered, setTab, setCat, handleOrder, utente, precompilaVocale, setPrecompilaVocale, aggiornaRimozioni }) {
+function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scontoPremio, premioLabel, scontoCompleanno, bibitaOmaggioId, setBibitaOmaggioId, bibitaOmaggioId2, setBibitaOmaggioId2, mancia, setMancia, manciaConfermata, setManciaConfermata, apertura, combo, ordered, setOrdered, numeroOrdine, setTab, setCat, handleOrder, utente, precompilaVocale, setPrecompilaVocale, aggiornaRimozioni }) {
   const [indirizzo, setIndirizzo] = useState(utente.indirizzo || '');
   const [note, setNote] = useState(utente.allergie && utente.allergie.trim() ? `Allergie/intolleranze: ${utente.allergie.trim()}` : '');
   const [tipoOrdine, setTipoOrdine] = useState('domicilio');
@@ -834,6 +834,12 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
     <View style={S.empty}>
       <Text style={{ fontSize: 80 }}>🎉</Text>
       <Text style={S.emptyTitle}>Ordine inviato!</Text>
+      {numeroOrdine && (
+        <View style={{ backgroundColor: '#FFF8E8', borderRadius: 14, paddingVertical: 10, paddingHorizontal: 20, marginTop: 4, marginBottom: 8, borderWidth: 2, borderColor: C.oro }}>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, textAlign: 'center' }}>Numero ordine</Text>
+          <Text style={{ fontFamily: FONT_TITOLO, fontSize: 28, fontWeight: '900', color: C.rosso, textAlign: 'center' }}>#{numeroOrdine}</Text>
+        </View>
+      )}
       <Text style={S.emptySub}>Ciao {utente.nome}, ti contatteremo presto!</Text>
       <TouchableOpacity style={S.emptyBtn} onPress={() => { setOrdered(false); setCart([]); setTab('home'); }}>
         <Text style={S.emptyBtnText}>Torna alla Home</Text>
@@ -1801,6 +1807,7 @@ export default function App() {
   const [cat, setCat] = useState('Pizze Rosse');
   const [cart, setCart] = useState([]);
   const [ordered, setOrdered] = useState(false);
+  const [numeroOrdine, setNumeroOrdine] = useState(null);
   const [ora, setOra] = useState(new Date());
   const [combo, setCombo] = useState(null);
   const [combosConfermate, setCombosConfermate] = useState(0);
@@ -1984,15 +1991,16 @@ export default function App() {
       ...righeRiepilogo,
     ].filter(Boolean).join('\n');
 
-    const { error } = await supabase.from('ordini').insert([{
+    const { data: ordineCreato, error } = await supabase.from('ordini').insert([{
       cliente: utente.nome, telefono: utente.telefono,
       items: JSON.stringify(cart.map(i => ({ name: i.name, qty: i.qty, price: i.price, aggiunte: (i.aggiunte || []).map(a => a.nome), rimozioni: i.rimozioni || [], integrale: !!i.integrale }))),
       totale: cartTotal + spedizione + manciaEffettiva,
       stato: 'nuovo', note: noteComplete,
       indirizzo: tipoOrdine === 'domicilio' ? indirizzo : 'Asporto',
       tipo: tipoOrdine, orario_consegna: giorno + ' - ' + orario, pagamento: pagamento,
-    }]);
+    }]).select();
     if (error) { alert('Errore: ' + error.message); return; }
+    if (ordineCreato && ordineCreato[0]) setNumeroOrdine(ordineCreato[0].id);
     if (indirizzo && utente.indirizzo !== indirizzo) {
       await supabase.from('clienti').update({ indirizzo }).eq('telefono', utente.telefono);
     }
@@ -2327,7 +2335,7 @@ export default function App() {
         bibitaOmaggioId={bibitaOmaggioId} setBibitaOmaggioId={setBibitaOmaggioId}
         bibitaOmaggioId2={bibitaOmaggioId2} setBibitaOmaggioId2={setBibitaOmaggioId2}
         mancia={mancia} setMancia={setMancia} manciaConfermata={manciaConfermata} setManciaConfermata={setManciaConfermata}
-        apertura={apertura} combo={combo} ordered={ordered} setOrdered={setOrdered}
+        apertura={apertura} combo={combo} ordered={ordered} setOrdered={setOrdered} numeroOrdine={numeroOrdine}
         setTab={setTab} setCat={setCat} handleOrder={handleOrder} utente={utente}
         precompilaVocale={precompilaVocale} setPrecompilaVocale={setPrecompilaVocale}
         aggiornaRimozioni={aggiornaRimozioni}

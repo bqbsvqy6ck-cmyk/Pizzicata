@@ -349,7 +349,10 @@ export default function Cucina() {
                   <View style={[S.statoBadge, { backgroundColor: cfg.color }]}>
                     <Text style={S.statoTxt}>{cfg.label.toUpperCase()}</Text>
                   </View>
-                  <Text style={S.cardNome}>{ordine.cliente}</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
+                    <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.oro }}>#{ordine.id}</Text>
+                    <Text style={[S.cardNome, { marginTop: 0 }]}>{ordine.cliente}</Text>
+                  </View>
                   <Text style={S.cardOrario}>{orarioLabel}</Text>
                   {oraArrivo ? <Text style={{ fontSize: 12, color: C.grigio, marginTop: 2 }}>Ricevuto: {giornoArrivo} alle {oraArrivo}</Text> : null}
                 </View>

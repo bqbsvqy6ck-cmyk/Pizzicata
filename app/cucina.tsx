@@ -336,6 +336,15 @@ export default function Cucina() {
           const pagLabel = ordine.pagamento
             ? ordine.pagamento.charAt(0).toUpperCase() + ordine.pagamento.slice(1)
             : 'Contanti';
+          const numeroGiorno = (() => {
+            const giornoOrd = new Date(ordine.created_at);
+            const stessoGiorno = ordini.filter(o => {
+              const d = new Date(o.created_at);
+              return d.getDate() === giornoOrd.getDate() && d.getMonth() === giornoOrd.getMonth() && d.getFullYear() === giornoOrd.getFullYear();
+            });
+            // ordini sono ordinati dal più recente: conta quanti nello stesso giorno hanno id <= a questo
+            return stessoGiorno.filter(o => o.id <= ordine.id).length;
+          })();
 
           return (
             <View key={ordine.id} style={[S.card, { borderLeftColor: cfg.color, background: 'linear-gradient(160deg, #2e1808 0%, #1d0e02 100%)' }]}>
@@ -350,7 +359,7 @@ export default function Cucina() {
                     <Text style={S.statoTxt}>{cfg.label.toUpperCase()}</Text>
                   </View>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 4 }}>
-                    <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.oro }}>#{ordine.id}</Text>
+                    <Text style={{ fontFamily: FONT_TITOLO, fontSize: 16, fontWeight: '900', color: C.oro }}>#{numeroGiorno}</Text>
                     <Text style={[S.cardNome, { marginTop: 0 }]}>{ordine.cliente}</Text>
                   </View>
                   <Text style={S.cardOrario}>{orarioLabel}</Text>

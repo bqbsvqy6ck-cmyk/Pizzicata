@@ -44,62 +44,61 @@ const MENU = {
     { id: 1, name: 'Margherita', desc: 'Pomodoro, Mozzarella, Basilico', price: 6.50 },
     { id: 2, name: 'Marinara', desc: "Pomodoro, Olio all'aglio, Origano", price: 5.50 },
     { id: 3, name: 'Calabrese', desc: 'Pomodoro, Mozzarella, Scamorza, Soppressata', price: 8.50 },
-    { id: 4, name: 'Capricciosa', desc: 'Pomodoro, Mozzarella, Cotto, Olive, Salamino, Carciofi', price: 8.50 },
+    { id: 4, name: 'Capricciosa', desc: 'Pomodoro, Mozzarella, Cotto, Funghi, Olive, Salamino, Carciofi', price: 8.50 },
     { id: 5, name: 'Carminello', desc: 'Pomodoro, Mozzarella, Funghi, Salsiccia, Fontina, Bacon', price: 9.00 },
     { id: 6, name: 'Contadina', desc: 'Pomodoro, Mozzarella, Cotto, Funghi, Salamino', price: 8.00 },
-    { id: 7, name: 'Diavola', desc: 'Pomodoro, Mozzarella, Salsiccia, Friarielli', price: 8.50 },
+    { id: 7, name: 'Diavola', desc: 'Pomodoro, Mozzarella, Salamino', price: 8.50 },
     { id: 8, name: 'Golosa', desc: 'Pomodoro, Mozzarella, Friarielli, Salsiccia, Soppressata', price: 9.00 },
     { id: 9, name: 'Laziale', desc: 'Pomodoro, Mozzarella, Acciughe, Zucchine', price: 7.50 },
     { id: 10, name: 'Maratona', desc: 'Pomodoro, Mozzarella, Cotto, Fontina', price: 7.50 },
     { id: 11, name: 'Marsigliese', desc: 'Pomodoro, Mozzarella, Cipolle, Gorgonzola', price: 7.50 },
-    { id: 12, name: 'Napoli', desc: 'Pomodoro, Mozzarella, Acciughe, Capperi, Olive', price: 7.00 },
+    { id: 12, name: 'Napoli', desc: 'Pomodoro, Mozzarella, Acciughe, Capperi, Origano', price: 7.00 },
     { id: 13, name: 'Palermitana', desc: 'Pomodoro, Mozzarella, Melanzane, Acciughe, Capperi, Olive', price: 8.50 },
-    { id: 14, name: 'Porcona', desc: 'Pomodoro, Mozzarella, Salamino, Soppressata, Wurstel, Bacon, Nduja', price: 10.00 },
+    { id: 14, name: 'Porcona', desc: 'Pomodoro, Mozzarella, Salamino, Soppressata, Bacon, Salsiccia, Wurstel, Nduja', price: 10.00 },
     { id: 15, name: 'Puttanesca', desc: 'Pomodoro, Sugo, Olive, Acciughe, Capperi, Origano, Pecorino', price: 9.00 },
     { id: 16, name: 'Rustica', desc: 'Pomodoro, Zucchine, Scamorza, Olive, Salsiccia, Grana', price: 8.50 },
     { id: 17, name: 'Siciliana', desc: 'Pomodoro, Olive, Acciughe, Capperi, Origano', price: 6.50 },
     { id: 18, name: 'Tirolese', desc: 'Pomodoro, Mozzarella, Brie, Speck', price: 8.00 },
     { id: 19, name: 'Tonno', desc: 'Pomodoro, Mozzarella, Tonno', price: 7.50 },
     { id: 20, name: 'Vegetariana', desc: 'Pomodoro, Mozzarella, Verdure, Grana', price: 8.00 },
+    { id: 25, name: 'Campagnola', desc: 'Pomodoro, Mozzarella, Zucchine, Fontina, Salsiccia, Grana', price: 8.50 },
+    { id: 26, name: 'Ghiottona', desc: 'Pomodoro, Mozzarella, Melanzane, Zucchine, Bacon, Salsiccia, Grana', price: 9.00 },
+    { id: 31, name: 'Nova', desc: 'Pomodoro, Mozzarella, Nduja, Burrata', price: 10.00 },
+    { id: 35, name: 'Simpatica', desc: 'Pomodoro, Mozzarella, Funghi, Fontina, Gorgonzola, Olive', price: 8.50 },
+    { id: 23, name: '4 Stagioni', desc: 'Pomodoro, Mozzarella, Cotto, Funghi, Carciofi, Olive', price: 8.00 },
   ],
   'Pizze Bianche': [
     { id: 21, name: 'Biancaneve', desc: 'Mozzarella', price: 6.00 },
     { id: 22, name: 'Certosino', desc: 'Mozzarella, Certosino', price: 7.00 },
-    { id: 23, name: '4 Stagioni', desc: 'Mozzarella, Cotto, Olive, Carciofi, Funghi', price: 8.00 },
     { id: 24, name: 'Bufala', desc: 'Mozzarella di Bufala, Pomodorini, Origano', price: 8.50 },
-    { id: 25, name: 'Campagnola', desc: 'Mozzarella, Fontina, Salsiccia, Zucchine, Grana', price: 8.50 },
-    { id: 26, name: 'Ghiottona', desc: 'Mozzarella, Salsiccia, Grana, Verdure, Bacon', price: 9.00 },
     { id: 27, name: 'Giambone', desc: 'Mozzarella, Pomodorini, Tonno, Zucchine, Cipolla, Rucola, Grana', price: 9.00 },
     { id: 28, name: 'Golden', desc: 'Mozzarella, Cipolla, Funghi, Salsiccia, Grana, Olio al tartufo', price: 10.50 },
-    { id: 29, name: 'Nduja', desc: "Mozzarella, Nduja, Salsiccia, Cipolla, Basilico", price: 9.00 },
+    { id: 29, name: 'Nduja', desc: 'Mozzarella, Soppressata, Nduja, Cipolle, Pomodori, Olio, Sale, Basilico (fuori cottura)', price: 9.00 },
     { id: 30, name: 'Nonno Federico', desc: 'Mozzarella, Gorgonzola, Cipolla, Salsiccia, Peperoni, Uovo', price: 9.00 },
-    { id: 31, name: 'Nova', desc: 'Mozzarella, Salsiccia, Burrata', price: 10.00 },
     { id: 32, name: 'Ortolana', desc: 'Mozzarella, Pomodorini, Peperoni, Melanzane, Zucchine, Cipolla', price: 8.00 },
     { id: 33, name: 'Saporita', desc: 'Mozzarella, Funghi, Scamorza', price: 8.50 },
     { id: 34, name: 'Sfiziosa', desc: 'Mozzarella, Certosino, Salsiccia, Salsa', price: 8.50 },
-    { id: 35, name: 'Simpatica', desc: 'Mozzarella, Funghi, Olive, Fontina, Gorgo', price: 8.50 },
   ],
   'Pizze Speciali': [
     { id: 36, name: '3 Porcellini', desc: 'Pomodoro, Mozzarella, Wurstel, Salsiccia, Salamino', price: 9.00 },
-    { id: 37, name: 'Bismark', desc: 'Pomodoro, Mozzarella, Bacon, Salsiccia, Patatine, Salsa Burger', price: 9.50 },
+    { id: 37, name: 'Bismark', desc: 'Pomodoro, Mozzarella, Prosciutto cotto, Uovo', price: 9.50 },
     { id: 38, name: 'Boscaiola', desc: 'Pomodoro, Mozzarella, Cotto, Scamorza, Salsiccia, Grana', price: 9.00 },
-    { id: 39, name: 'Gourmet', desc: 'Funghi, Cipolla, Carciofi, Certosino, Olio al tartufo, Grana', price: 10.50 },
-    { id: 40, name: 'Gustosa', desc: 'Pomodorini, Mozzarella, Salsiccia, Salamino, Olive, Bacon', price: 9.00 },
+    { id: 39, name: 'Gourmet', desc: 'Pomodoro, Mozzarella, Funghi, Cipolla, Carciofi, Certosino, Grana, Pepe, Olio al tartufo', price: 10.50 },
+    { id: 40, name: 'Gustosa', desc: 'Pomodoro, Mozzarella, Bacon, Salamino, Salsiccia, Olive', price: 9.00 },
     { id: 41, name: 'La 4 Mori', desc: 'Mozzarella, Pomodorini, Salsiccia, Grana', price: 8.50 },
   ],
   'Limited Edition': [
     { id: 42, name: 'Elio', desc: 'Pomodoro, Mozzarella, Salsiccia, Gorgonzola, Zucchine', price: 7.00 },
-    { id: 43, name: 'Yammie-Ja', desc: 'Crema di Cipolla, Mozzarella, Salsiccia, Bacon, Nduja', price: 11.00 },
+    { id: 43, name: 'Yammie-Ja', desc: 'Mozzarella, Salsiccia, Bacon, Nduja, Pomodorini, Crema di cipolle', price: 11.00 },
     { id: 44, name: 'Gioia', desc: 'Mozzarella, Pomodorini, Crocchette, Bacon, Grana, Scamorza, Nduja', price: 12.00 },
     { id: 45, name: 'A Pork', desc: 'Mozzarella, Cipolla, Pulled Pork, Insalata, Salsa BBQ, Cheddar', price: 15.00 },
-    { id: 46, name: 'Primavera', desc: 'Mozzarella, Zucchine, Melanzane, Peperoni, Tonno, Grana', price: 12.00 },
+    { id: 46, name: 'Primavera', desc: 'Mozzarella, Melanzane, Zucchine, Cipolla, Pomodorini, Peperoni, Tonno, Origano, Grana', price: 12.00 },
     { id: 47, name: 'Supernova', desc: 'Pomodoro, Soppressata, Salsiccia, Nduja, Burrata', price: 12.00 },
     { id: 48, name: 'La Antò', desc: 'Bianca, Crocchette di patate, Scamorza, Salsiccia, Grana, Basilico, Pepe', price: 11.00 },
   ],
-  'Focacce': [
-    { id: 48, name: 'Balsamica', desc: 'Certosino, Rucola, Pomodorini, Grana, Speck, Glassa balsamica', price: 10.50 },
+  'Focacce': [{ id: 202, name: 'Balsamica', desc: 'Certosino, Rucola, Pomodorini, Grana, Speck, Glassa balsamica', price: 10.50 },
     { id: 49, name: 'Burrata', desc: 'Pomodorini, Rucola, Crudo, Burrata, Grana, Olio EVO', price: 12.50 },
-    { id: 50, name: 'Bruschetta', desc: 'Pomodorini, Olio, Sale, Origano, Basilico', price: 6.50 },
+    { id: 50, name: 'Bruschetta', desc: "Pomodorini, Olio all'aglio, Sale, Origano, Basilico", price: 6.50 },
     { id: 51, name: 'Italia', desc: 'Pomodorini, Rucola, Bufala', price: 8.50 },
     { id: 52, name: 'Prosciutto Crudo', desc: '', price: 7.50 },
     { id: 53, name: 'Speck', desc: '', price: 7.00 },
@@ -131,8 +130,8 @@ const MENU = {
     { id: 73, name: 'Capo', desc: 'Hamburger, Lattuga, Pomodoro, Cipolla, Fontina, Bacon, BBQ', price: 10.00 },
     { id: 74, name: 'Ciccio', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Bacon, Ketchup, Mayonese', price: 10.00 },
     { id: 75, name: 'Fanalino di Coda', desc: 'Hamburger, Soppressata, Peperoni, Cipolla, Fontina, Lattuga, BBQ', price: 12.00 },
-    { id: 76, name: 'Il Lordone', desc: 'Doppio Hamburger, Doppio Cheddar, Bacon, Lattuga, Salsa Pizzicata', price: 18.00 },
-    { id: 77, name: 'Ultra Pork Burger', desc: 'Hamburger di Fasona, Pulled Pork, Doppio Bacon, Doppio Cheddar, BBQ', price: 20.00 },
+    { id: 76, name: 'Il Lordone', desc: 'Doppio Hamburger, Cheddar, Cipolla, Bacon, Lattuga, Pomodorini, Salsa Pizzicata', price: 18.00 },
+    { id: 77, name: 'Ultra Pork Burger', desc: 'Hamburger di Fassona, Pulled Pork, Doppio Bacon, Doppio Cheddar, Salsa BBQ', price: 20.00 },
     { id: 78, name: 'Menu Panino', desc: 'Hamburger, Lattuga, Pomodoro, Cheddar, Ketchup + patatine e bibita', price: 14.00 },
   ],
   'Pane del Forno': [
@@ -242,6 +241,7 @@ const CATEGORIE_CON_AGGIUNTE = ['Pizze Rosse', 'Pizze Bianche', 'Pizze Speciali'
 const IMPASTO_INTEGRALE = { nome: 'Impasto integrale', prezzo: 1.00 };
 
 const AGGIUNTE = [
+  { nome: 'Uovo', prezzo: 1.00 },
   { nome: 'Würstel', prezzo: 1.00 },
   { nome: 'Salsiccia', prezzo: 1.00 },
   { nome: 'Bacon', prezzo: 1.00 },
@@ -803,6 +803,14 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const doOrder = () => {
     if (combo) { setErrore('Hai una Combo Famiglia non confermata. Completala e premi "Conferma combo", oppure annullala dal menù.'); return; }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
+    // Avviso bibita omaggio non selezionata
+    const haPremioBibita = utente.premio === 'bibita' || utente.premio === 'bibita2';
+    const haBibitaInCarrello = cart.some(i => i.id >= 114 && i.id <= 122);
+    const omaggioNonScelto = utente.premio === 'bibita' ? !bibitaOmaggioId : (utente.premio === 'bibita2' ? (!bibitaOmaggioId && !bibitaOmaggioId2) : false);
+    if (haPremioBibita && haBibitaInCarrello && omaggioNonScelto) {
+      const procedi = window.confirm('⚠️ Hai una bibita in OMAGGIO non ancora selezionata!\n\nSe procedi ora, pagherai la bibita per intero senza usare il premio della ruota.\n\nVuoi procedere comunque?');
+      if (!procedi) return;
+    }
     const orarioFinale = orario === 'custom' ? `${oraCustom}:${minCustom}` : orario;
     const vuoleSubito = orarioFinale === 'Appena possibile';
     if (apertura && !apertura.aperto && isOggi && vuoleSubito) {
@@ -1341,7 +1349,59 @@ function RotellaGira({ size = 46 }) {
     <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', border: '3px solid #E8B84B', boxShadow: '0 0 16px rgba(232,184,75,0.6)', transform: `rotate(${deg}deg)` }} />
   );
 }
+function BottoneSegnalaBug({ utente, supabase }) {
+  const [aperto, setAperto] = useState(false);
+  const [testo, setTesto] = useState('');
+  const [inviato, setInviato] = useState(false);
+  const [inviando, setInviando] = useState(false);
 
+  const invia = async () => {
+    if (!testo.trim()) return;
+    setInviando(true);
+    const { error } = await supabase.from('bug_report').insert([{
+      testo: testo.trim(),
+      cliente: utente?.nome || '',
+      telefono: utente?.telefono || '',
+    }]);
+    setInviando(false);
+    if (error) { alert('Errore nell\'invio: ' + error.message); return; }
+    setInviato(true); setTesto('');
+    setTimeout(() => { setInviato(false); setAperto(false); }, 2000);
+  };
+
+  return (
+    <>
+      <TouchableOpacity onPress={() => setAperto(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginTop: 8, marginBottom: 8, borderWidth: 1, borderColor: '#E8D5B0' }}>
+        <Text style={{ fontSize: 18 }}>🐛</Text>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: C.grigio }}>Segnala un problema</Text>
+      </TouchableOpacity>
+      {aperto && (
+        <div onClick={() => setAperto(false)} style={{ position: 'fixed', inset: 0, height: '100vh', background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, boxSizing: 'border-box' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#F7EFDF', borderRadius: 22, padding: 24, maxWidth: 400, width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <span style={{ fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: 900, color: C.marrone }}>🐛 Segnala un problema</span>
+              <span onClick={() => setAperto(false)} style={{ fontSize: 24, color: C.grigio, cursor: 'pointer' }}>✕</span>
+            </div>
+            {inviato ? (
+              <div style={{ textAlign: 'center', padding: '20px 0' }}>
+                <div style={{ fontSize: 40 }}>✅</div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.verde, fontWeight: 700, marginTop: 8 }}>Grazie! Segnalazione inviata.</div>
+              </div>
+            ) : (
+              <>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 12 }}>Hai trovato un errore o qualcosa non funziona? Scrivicelo, ci aiuterai a migliorare l'app!</div>
+                <textarea value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Descrivi il problema..." style={{ ...textareaStyle, minHeight: 100 }} />
+                <button onClick={invia} disabled={inviando} style={{ width: '100%', background: 'linear-gradient(145deg, #A02020, #7E1414)', color: 'white', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FONT_TESTO, marginTop: 12 }}>
+                  {inviando ? 'Invio...' : 'Invia segnalazione'}
+                </button>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 function SecLabel({ testo }) {
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 22, marginBottom: 12, marginHorizontal: 4 }}>
@@ -1741,6 +1801,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
         </View>
         <Text style={{ fontSize: 18, color: C.oro }}>→</Text>
       </TouchableOpacity>
+      <BottoneSegnalaBug utente={utente} supabase={supabase} />
 
       <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
         <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
@@ -2000,7 +2061,11 @@ export default function App() {
       tipo: tipoOrdine, orario_consegna: giorno + ' - ' + orario, pagamento: pagamento,
     }]).select();
     if (error) { alert('Errore: ' + error.message); return; }
-    if (ordineCreato && ordineCreato[0]) setNumeroOrdine(ordineCreato[0].id);
+    if (ordineCreato && ordineCreato[0]) {
+      const oggiInizio = new Date(); oggiInizio.setHours(0, 0, 0, 0);
+      const { count } = await supabase.from('ordini').select('*', { count: 'exact', head: true }).gte('created_at', oggiInizio.toISOString());
+      setNumeroOrdine(count || 1);
+    }
     if (indirizzo && utente.indirizzo !== indirizzo) {
       await supabase.from('clienti').update({ indirizzo }).eq('telefono', utente.telefono);
     }
@@ -2185,6 +2250,8 @@ export default function App() {
           </svg>
         </TouchableOpacity>
       </View>
+      <BottoneSegnalaBug utente={utente} supabase={supabase} />
+      <View style={{ height: 20 }} />
     </ScrollView>
   );
 

@@ -1825,6 +1825,179 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
     </ScrollView>
   );
 }
+  function Home({ utente, apertura, traffico, oraStr, setTab, setCat, setMostraVocale, supabase }) {
+  return (
+    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
+      <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
+        <View style={[S.profiloMiniIcon, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 20 }}>👤</Text></View>
+        <View style={{ flex: 1 }}>
+          <Text style={S.profiloMiniNome}>Ciao {utente.nome}{utente.cognome ? ' ' + utente.cognome : ''}!</Text>
+          <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
+        </View>
+        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
+      </TouchableOpacity>
+
+      {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: TRAFFICO_INFO[traffico].color, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
+          <Text style={{ fontSize: 20 }}>{TRAFFICO_INFO[traffico].emoji}</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: '#fff' }}>Attesa stimata: {TRAFFICO_INFO[traffico].tempo}</Text>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{TRAFFICO_INFO[traffico].label}</Text>
+          </View>
+        </View>
+      )}
+
+      <View style={[S.hero, { background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)' }]}>
+        <View style={[S.ember, { width: 60, height: 60, top: -10, right: 30, opacity: 0.5, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <View style={[S.ember, { width: 30, height: 30, bottom: 24, right: 90, opacity: 0.35, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <View style={[S.ember, { width: 14, height: 14, top: 70, right: 22, opacity: 0.6, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
+        <svg width="170" height="170" viewBox="0 0 200 200" fill="none" style={{ position: 'absolute', right: -28, bottom: -38, opacity: 0.92 }}>
+          <path d="M100 10 L190 170 Q100 200 10 170 Z" fill="#E8B84B"/>
+          <path d="M100 30 L175 165 Q100 190 25 165 Z" fill="#C0392B" opacity="0.85"/>
+          <circle cx="80" cy="120" r="11" fill="#F2E8D5"/>
+          <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
+          <circle cx="120" cy="145" r="10" fill="#F2E8D5"/>
+          <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
+          <circle cx="100" cy="125" r="6" fill="#2C5A2E"/>
+        </svg>
+        <Text style={S.heroTag}>La nostra passione, la tua pizza</Text>
+        <Text style={S.heroBig}>Ordina ora</Text>
+        <Text style={S.heroSub}>Domicilio o asporto</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
+            <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
+            <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
+          </TouchableOpacity>
+          <TouchableOpacity activeOpacity={0.85} onPress={() => setMostraVocale(true)} style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(232,184,75,0.5)' }}>
+            <Text style={{ fontSize: 24 }}>🎤</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <TouchableOpacity activeOpacity={0.85} onPress={() => setMostraVocale(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginBottom: 4, borderWidth: 1, borderColor: '#E8D5B0' }}>
+        <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #A82020, #6E1212)' }}>
+          <Text style={{ fontSize: 20 }}>🎤</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Ordina parlando</Text>
+            <View style={{ backgroundColor: '#C8961E', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
+              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>BETA</Text>
+            </View>
+          </View>
+          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Dì la tua pizza al microfono, pensiamo a tutto noi</Text>
+        </View>
+        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.rosso, fontWeight: '800' }}>Prova →</Text>
+      </TouchableOpacity>
+
+      <SecLabel testo="Offerte" />
+      <TouchableOpacity style={[S.comboCard, { background: 'radial-gradient(circle at 90% 10%, rgba(232,184,75,0.3), transparent 50%), linear-gradient(145deg, #8B1A1A 0%, #5C0F0F 100%)' }]} activeOpacity={0.9} onPress={() => setTab('offers')}>
+        <Text style={S.comboGift}>🎁</Text>
+        <Text style={S.comboTitle}>Combo Famiglia</Text>
+        <View style={{ marginTop: 4 }}>
+          <Text style={S.comboLi}>✓  4 pizze a scelta</Text>
+          <Text style={S.comboLi}>✓  4 dolci a scelta</Text>
+          <Text style={S.comboLi}>✓  4 bibite in omaggio</Text>
+        </View>
+        <Text style={S.comboCta}>Scopri l'offerta →</Text>
+      </TouchableOpacity>
+
+      <SecLabel testo="Dal forno a legna" />
+      <View style={S.paneCardNew}>
+        <Text style={{ fontSize: 30 }}>🍞</Text>
+        <View style={{ flex: 1 }}>
+          <Text style={S.paneTitoloNew}>Pane del Forno a Legna</Text>
+          <Text style={S.paneSubNew}>Fresco ogni mattina, solo su preordine</Text>
+        </View>
+        <TouchableOpacity style={S.paneBtnNew} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
+          <Text style={S.paneBtnTextNew}>Prenota →</Text>
+        </TouchableOpacity>
+      </View>
+
+      <SecLabel testo="Gira e vinci" />
+      <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)' }]}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+          <RotellaGira size={46} />
+          <View style={{ flex: 1 }}>
+            <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
+            <Text style={S.rewardsSub}>Ad ogni ordine puoi vincere</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
+          <Text style={{ fontSize: 22 }}>🥤</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={S.tierTitle}>Ordini sopra 15€</Text>
+            <Text style={S.tierSub}>Bibita omaggio o sconto 10%</Text>
+          </View>
+        </View>
+        <View style={[S.tier, { backgroundColor: 'rgba(232,184,75,0.18)', borderWidth: 1, borderColor: 'rgba(232,184,75,0.4)', marginTop: 8 }]}>
+          <Text style={{ fontSize: 22 }}>⭐</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[S.tierTitle, { color: '#FFE9A8' }]}>Ordini sopra 50€</Text>
+            <Text style={[S.tierSub, { color: 'rgba(255,233,168,0.85)' }]}>Ruota potenziata: 2 bibite o sconto 15%</Text>
+          </View>
+        </View>
+      </View>
+
+      <SecLabel testo="🔥 Dal forno" />
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
+        {VIDEO_DAL_FORNO.map((video, i) => {
+          const isTT = video.piattaforma === 'tiktok';
+          return (
+            <TouchableOpacity key={i} activeOpacity={0.85} onPress={() => window.open(video.url, '_blank')} style={{ width: 150, height: 230, borderRadius: 18, overflow: 'hidden', position: 'relative' }}>
+              <View style={{ position: 'absolute', inset: 0, background: isTT ? 'linear-gradient(160deg, #2b2b2b 0%, #000 100%)' : 'linear-gradient(160deg, #FEDA75 0%, #FA7E1E 25%, #D62976 60%, #962FBF 100%)', backgroundColor: isTT ? '#000' : '#D62976' }} />
+              <Text style={{ position: 'absolute', right: -10, top: -6, fontSize: 70, opacity: 0.18 }}>🍕</Text>
+              <View style={{ position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center' }}>
+                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}>
+                  <Text style={{ fontSize: 20, marginLeft: 3 }}>▶️</Text>
+                </View>
+              </View>
+              <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
+                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', fontFamily: FONT_TESTO }}>{isTT ? 'TikTok' : 'Instagram'}</Text>
+              </View>
+              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, background: 'linear-gradient(0deg, rgba(0,0,0,0.7), transparent)' }}>
+                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: FONT_TITOLO }}>{video.titolo}</Text>
+                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: FONT_TESTO }}>Guarda il video →</Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      <SecLabel testo="Dove trovarci" />
+      <View style={S.tilesRow}>
+        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
+          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📍</Text></View>
+          <Text style={S.tileTitleNew}>Dove siamo</Text>
+          <Text style={S.tileValNew}>C.so Giambone 8/b{'\n'}Torino</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => { const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310'); window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310'; }}>
+          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📞</Text></View>
+          <Text style={S.tileTitleNew}>Telefono</Text>
+          <Text style={S.tileValNew}>331 5695959{'\n'}011 0362310</Text>
+        </TouchableOpacity>
+      </View>
+
+      <SecLabel testo="Seguici" />
+      <View style={{ flexDirection: 'row', gap: 20, marginBottom: 28, justifyContent: 'center' }}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => window.open('https://www.instagram.com/pizzicata_pizzeria', '_blank')} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 30% 110%, #FEDA75 0%, #FA7E1E 25%, #D62976 50%, #962FBF 75%, #4F5BD5 100%)', boxShadow: '0 4px 12px rgba(214,41,118,0.4)' }}>
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
+          </svg>
+        </TouchableOpacity>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => window.open('https://www.tiktok.com/@pizzicatapizzeria', '_blank')} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }}>
+          <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
+            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
+          </svg>
+        </TouchableOpacity>
+      </View>
+      <BottoneSegnalaBug utente={utente} supabase={supabase} />
+      <View style={{ height: 20 }} />
+    </ScrollView>
+  );
+}
 export default function App() {
  const [utente, setUtenteRaw] = useState(null);
   const [authCaricato, setAuthCaricato] = useState(false);
@@ -2076,186 +2249,14 @@ export default function App() {
     }
     const totaleOrdine = cartTotal + spedizione + manciaEffettiva;
     setCombo(null); setCombosConfermate(0); setBibitaOmaggioId(null); setBibitaOmaggioId2(null);
-    setMancia(0); setManciaConfermata(false); setOrdered(true);
+    setMancia(0); setManciaConfermata(false); setOrdered(true); setCart([]);
     if (totaleOrdine >= 50) { setRuotaPotenziata(true); setTimeout(() => setRuotaVisibile(true), 800); }
     else if (totaleOrdine >= 15) { setRuotaPotenziata(false); setTimeout(() => setRuotaVisibile(true), 800); }
   };
 
   const oraStr = ora.toLocaleTimeString('it-IT', { hour: '2-digit', minute: '2-digit' });
 
-  const Home = () => (
-    <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
-      <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
-        <View style={[S.profiloMiniIcon, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 20 }}>👤</Text></View>
-        <View style={{ flex: 1 }}>
-          <Text style={S.profiloMiniNome}>Ciao {utente.nome}{utente.cognome ? ' ' + utente.cognome : ''}!</Text>
-          <Text style={S.profiloMiniSub}>Tocca per i tuoi dati e premi →</Text>
-        </View>
-        <Text style={{ fontSize: 13, color: C.oro, fontWeight: '800' }}>{oraStr}</Text>
-      </TouchableOpacity>
 
-      {traffico && TRAFFICO_INFO[traffico] && apertura.aperto && (
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: TRAFFICO_INFO[traffico].color, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 14, marginTop: 10, boxShadow: '0 4px 12px rgba(0,0,0,0.12)' }}>
-          <Text style={{ fontSize: 20 }}>{TRAFFICO_INFO[traffico].emoji}</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '800', color: '#fff' }}>Attesa stimata: {TRAFFICO_INFO[traffico].tempo}</Text>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 11, color: 'rgba(255,255,255,0.85)' }}>{TRAFFICO_INFO[traffico].label}</Text>
-          </View>
-        </View>
-      )}
-
-      <View style={[S.hero, { background: 'radial-gradient(circle at 85% 15%, rgba(232,184,75,0.45), transparent 45%), radial-gradient(circle at 10% 90%, rgba(140,20,20,0.5), transparent 50%), linear-gradient(150deg, #234023 0%, #16301a 100%)' }]}>
-        <View style={[S.ember, { width: 60, height: 60, top: -10, right: 30, opacity: 0.5, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
-        <View style={[S.ember, { width: 30, height: 30, bottom: 24, right: 90, opacity: 0.35, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
-        <View style={[S.ember, { width: 14, height: 14, top: 70, right: 22, opacity: 0.6, background: 'radial-gradient(circle, rgba(232,184,75,0.9), rgba(232,184,75,0))' }]} />
-        <svg width="170" height="170" viewBox="0 0 200 200" fill="none" style={{ position: 'absolute', right: -28, bottom: -38, opacity: 0.92 }}>
-          <path d="M100 10 L190 170 Q100 200 10 170 Z" fill="#E8B84B"/>
-          <path d="M100 30 L175 165 Q100 190 25 165 Z" fill="#C0392B" opacity="0.85"/>
-          <circle cx="80" cy="120" r="11" fill="#F2E8D5"/>
-          <circle cx="115" cy="100" r="9" fill="#F2E8D5"/>
-          <circle cx="120" cy="145" r="10" fill="#F2E8D5"/>
-          <circle cx="75" cy="155" r="7" fill="#2C5A2E"/>
-          <circle cx="100" cy="125" r="6" fill="#2C5A2E"/>
-        </svg>
-        <Text style={S.heroTag}>La nostra passione, la tua pizza</Text>
-        <Text style={S.heroBig}>Ordina ora</Text>
-        <Text style={S.heroSub}>Domicilio o asporto</Text>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity style={[S.ctaOrdina, { background: 'linear-gradient(135deg, #E8B84B 0%, #C8961E 100%)' }]} activeOpacity={0.85} onPress={() => setTab('menu')}>
-            <Text style={S.ctaOrdinaText}>Inizia l'ordine</Text>
-            <View style={S.ctaArrow}><Text style={{ color: C.oroChiaro, fontSize: 16, fontWeight: '900' }}>→</Text></View>
-          </TouchableOpacity>
-          <TouchableOpacity activeOpacity={0.85} onPress={() => setMostraVocale(true)} style={{ width: 52, height: 52, borderRadius: 26, alignItems: 'center', justifyContent: 'center', background: 'rgba(255,255,255,0.15)', borderWidth: 1.5, borderColor: 'rgba(232,184,75,0.5)' }}>
-            <Text style={{ fontSize: 24 }}>🎤</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <TouchableOpacity activeOpacity={0.85} onPress={() => setMostraVocale(true)} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginBottom: 4, borderWidth: 1, borderColor: '#E8D5B0' }}>
-        <View style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', background: 'linear-gradient(135deg, #A82020, #6E1212)' }}>
-          <Text style={{ fontSize: 20 }}>🎤</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-            <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, fontWeight: '800', color: C.marrone }}>Ordina parlando</Text>
-            <View style={{ backgroundColor: '#C8961E', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 }}>
-              <Text style={{ color: '#fff', fontSize: 9, fontWeight: '800', letterSpacing: 0.5 }}>BETA</Text>
-            </View>
-          </View>
-          <Text style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Dì la tua pizza al microfono, pensiamo a tutto noi</Text>
-        </View>
-        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.rosso, fontWeight: '800' }}>Prova →</Text>
-      </TouchableOpacity>
-
-      <SecLabel testo="Offerte" />
-      <TouchableOpacity style={[S.comboCard, { background: 'radial-gradient(circle at 90% 10%, rgba(232,184,75,0.3), transparent 50%), linear-gradient(145deg, #8B1A1A 0%, #5C0F0F 100%)' }]} activeOpacity={0.9} onPress={() => setTab('offers')}>
-        <Text style={S.comboGift}>🎁</Text>
-        <Text style={S.comboTitle}>Combo Famiglia</Text>
-        <View style={{ marginTop: 4 }}>
-          <Text style={S.comboLi}>✓  4 pizze a scelta</Text>
-          <Text style={S.comboLi}>✓  4 dolci a scelta</Text>
-          <Text style={S.comboLi}>✓  4 bibite in omaggio</Text>
-        </View>
-        <Text style={S.comboCta}>Scopri l'offerta →</Text>
-      </TouchableOpacity>
-
-      <SecLabel testo="Dal forno a legna" />
-      <View style={S.paneCardNew}>
-        <Text style={{ fontSize: 30 }}>🍞</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={S.paneTitoloNew}>Pane del Forno a Legna</Text>
-          <Text style={S.paneSubNew}>Fresco ogni mattina, solo su preordine</Text>
-        </View>
-        <TouchableOpacity style={S.paneBtnNew} onPress={() => { setCat('Pane del Forno'); setTab('menu'); }}>
-          <Text style={S.paneBtnTextNew}>Prenota →</Text>
-        </TouchableOpacity>
-      </View>
-
-      <SecLabel testo="Gira e vinci" />
-      <View style={[S.rewards, { background: 'linear-gradient(160deg, #2f5e30 0%, #1c3a1d 100%)' }]}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 14 }}>
-          <RotellaGira size={46} />
-          <View style={{ flex: 1 }}>
-            <Text style={S.rewardsTitle}>Gira e vinci premi!</Text>
-            <Text style={S.rewardsSub}>Ad ogni ordine puoi vincere</Text>
-          </View>
-        </View>
-        <View style={[S.tier, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
-          <Text style={{ fontSize: 22 }}>🥤</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={S.tierTitle}>Ordini sopra 15€</Text>
-            <Text style={S.tierSub}>Bibita omaggio o sconto 10%</Text>
-          </View>
-        </View>
-        <View style={[S.tier, { backgroundColor: 'rgba(232,184,75,0.18)', borderWidth: 1, borderColor: 'rgba(232,184,75,0.4)', marginTop: 8 }]}>
-          <Text style={{ fontSize: 22 }}>⭐</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={[S.tierTitle, { color: '#FFE9A8' }]}>Ordini sopra 50€</Text>
-            <Text style={[S.tierSub, { color: 'rgba(255,233,168,0.85)' }]}>Ruota potenziata: 2 bibite o sconto 15%</Text>
-          </View>
-        </View>
-      </View>
-
-      <SecLabel testo="🔥 Dal forno" />
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginHorizontal: -16 }} contentContainerStyle={{ paddingHorizontal: 16, gap: 12 }}>
-        {VIDEO_DAL_FORNO.map((video, i) => {
-          const isTT = video.piattaforma === 'tiktok';
-          return (
-            <TouchableOpacity key={i} activeOpacity={0.85} onPress={() => window.open(video.url, '_blank')} style={{ width: 150, height: 230, borderRadius: 18, overflow: 'hidden', position: 'relative' }}>
-              <View style={{ position: 'absolute', inset: 0, background: isTT ? 'linear-gradient(160deg, #2b2b2b 0%, #000 100%)' : 'linear-gradient(160deg, #FEDA75 0%, #FA7E1E 25%, #D62976 60%, #962FBF 100%)', backgroundColor: isTT ? '#000' : '#D62976' }} />
-              <Text style={{ position: 'absolute', right: -10, top: -6, fontSize: 70, opacity: 0.18 }}>🍕</Text>
-              <View style={{ position: 'absolute', top: '38%', left: 0, right: 0, alignItems: 'center' }}>
-                <View style={{ width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(255,255,255,0.92)', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,0,0,0.3)' }}>
-                  <Text style={{ fontSize: 20, marginLeft: 3 }}>▶️</Text>
-                </View>
-              </View>
-              <View style={{ position: 'absolute', top: 10, left: 10, backgroundColor: 'rgba(0,0,0,0.35)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3 }}>
-                <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800', fontFamily: FONT_TESTO }}>{isTT ? 'TikTok' : 'Instagram'}</Text>
-              </View>
-              <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: 12, background: 'linear-gradient(0deg, rgba(0,0,0,0.7), transparent)' }}>
-                <Text style={{ color: '#fff', fontSize: 14, fontWeight: '800', fontFamily: FONT_TITOLO }}>{video.titolo}</Text>
-                <Text style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontFamily: FONT_TESTO }}>Guarda il video →</Text>
-              </View>
-            </TouchableOpacity>
-          );
-        })}
-      </ScrollView>
-
-      <SecLabel testo="Dove trovarci" />
-      <View style={S.tilesRow}>
-        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => window.open('https://www.google.com/maps/search/?api=1&query=La+Pizzicata+Corso+Giambone+Torino', '_blank')}>
-          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📍</Text></View>
-          <Text style={S.tileTitleNew}>Dove siamo</Text>
-          <Text style={S.tileValNew}>C.so Giambone 8/b{'\n'}Torino</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => { const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310'); window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310'; }}>
-          <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📞</Text></View>
-          <Text style={S.tileTitleNew}>Telefono</Text>
-          <Text style={S.tileValNew}>331 5695959{'\n'}011 0362310</Text>
-        </TouchableOpacity>
-      </View>
-
-      <SecLabel testo="Seguici" />
-      <View style={{ flexDirection: 'row', gap: 20, marginBottom: 28, justifyContent: 'center' }}>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => window.open('https://www.instagram.com/pizzicata_pizzeria', '_blank')} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', background: 'radial-gradient(circle at 30% 110%, #FEDA75 0%, #FA7E1E 25%, #D62976 50%, #962FBF 75%, #4F5BD5 100%)', boxShadow: '0 4px 12px rgba(214,41,118,0.4)' }}>
-          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
-            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
-            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
-          </svg>
-        </TouchableOpacity>
-        <TouchableOpacity activeOpacity={0.8} onPress={() => window.open('https://www.tiktok.com/@pizzicatapizzeria', '_blank')} style={{ width: 60, height: 60, borderRadius: 30, alignItems: 'center', justifyContent: 'center', backgroundColor: '#000000', boxShadow: '0 4px 12px rgba(0,0,0,0.35)' }}>
-          <svg width="30" height="30" viewBox="0 0 24 24" fill="white">
-            <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1-.1z"/>
-          </svg>
-        </TouchableOpacity>
-      </View>
-      <BottoneSegnalaBug utente={utente} supabase={supabase} />
-      <View style={{ height: 20 }} />
-    </ScrollView>
-  );
-
-  
 
   const Offers = () => (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
@@ -2389,7 +2390,7 @@ export default function App() {
   };
 
   const screens = {
-    home: <Home />,
+    home: <Home utente={utente} apertura={apertura} traffico={traffico} oraStr={oraStr} setTab={setTab} setCat={setCat} setMostraVocale={setMostraVocale} supabase={supabase} />,
     menu: <MenuScreen cat={cat} setCat={setCat} combo={combo} combosConfermate={combosConfermate} cart={cart} confermaCombo={confermaCombo} add={add} setProdottoAggiunte={setProdottoAggiunte} />,
     offers: <Offers />,
     profilo: <ProfiloScreen utente={utente} setUtente={setUtente} setTab={setTab} supabase={supabase} />,

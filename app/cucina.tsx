@@ -30,6 +30,151 @@ const TRAFFICO_INFO = {
 
 const PAG_ICON = { contanti: '💵', pos: '💳', online: '📱' };
 
+const PRODOTTI = [
+  { id: 1, cat: 'Pizze Rosse', nome: 'Margherita' },
+  { id: 2, cat: 'Pizze Rosse', nome: 'Marinara' },
+  { id: 3, cat: 'Pizze Rosse', nome: 'Calabrese' },
+  { id: 4, cat: 'Pizze Rosse', nome: 'Capricciosa' },
+  { id: 5, cat: 'Pizze Rosse', nome: 'Carminello' },
+  { id: 6, cat: 'Pizze Rosse', nome: 'Contadina' },
+  { id: 7, cat: 'Pizze Rosse', nome: 'Diavola' },
+  { id: 8, cat: 'Pizze Rosse', nome: 'Golosa' },
+  { id: 9, cat: 'Pizze Rosse', nome: 'Laziale' },
+  { id: 10, cat: 'Pizze Rosse', nome: 'Maratona' },
+  { id: 11, cat: 'Pizze Rosse', nome: 'Marsigliese' },
+  { id: 12, cat: 'Pizze Rosse', nome: 'Napoli' },
+  { id: 13, cat: 'Pizze Rosse', nome: 'Palermitana' },
+  { id: 14, cat: 'Pizze Rosse', nome: 'Porcona' },
+  { id: 15, cat: 'Pizze Rosse', nome: 'Puttanesca' },
+  { id: 16, cat: 'Pizze Rosse', nome: 'Rustica' },
+  { id: 17, cat: 'Pizze Rosse', nome: 'Siciliana' },
+  { id: 18, cat: 'Pizze Rosse', nome: 'Tirolese' },
+  { id: 19, cat: 'Pizze Rosse', nome: 'Tonno' },
+  { id: 20, cat: 'Pizze Rosse', nome: 'Vegetariana' },
+  { id: 23, cat: 'Pizze Rosse', nome: '4 Stagioni' },
+  { id: 25, cat: 'Pizze Rosse', nome: 'Campagnola' },
+  { id: 26, cat: 'Pizze Rosse', nome: 'Ghiottona' },
+  { id: 31, cat: 'Pizze Rosse', nome: 'Nova' },
+  { id: 35, cat: 'Pizze Rosse', nome: 'Simpatica' },
+  { id: 21, cat: 'Pizze Bianche', nome: 'Biancaneve' },
+  { id: 22, cat: 'Pizze Bianche', nome: 'Certosino' },
+  { id: 24, cat: 'Pizze Bianche', nome: 'Bufala' },
+  { id: 27, cat: 'Pizze Bianche', nome: 'Giambone' },
+  { id: 28, cat: 'Pizze Bianche', nome: 'Golden' },
+  { id: 29, cat: 'Pizze Bianche', nome: 'Nduja' },
+  { id: 30, cat: 'Pizze Bianche', nome: 'Nonno Federico' },
+  { id: 32, cat: 'Pizze Bianche', nome: 'Ortolana' },
+  { id: 33, cat: 'Pizze Bianche', nome: 'Saporita' },
+  { id: 34, cat: 'Pizze Bianche', nome: 'Sfiziosa' },
+  { id: 36, cat: 'Pizze Speciali', nome: '3 Porcellini' },
+  { id: 37, cat: 'Pizze Speciali', nome: 'Bismark' },
+  { id: 38, cat: 'Pizze Speciali', nome: 'Boscaiola' },
+  { id: 39, cat: 'Pizze Speciali', nome: 'Gourmet' },
+  { id: 40, cat: 'Pizze Speciali', nome: 'Gustosa' },
+  { id: 41, cat: 'Pizze Speciali', nome: 'La 4 Mori' },
+  { id: 42, cat: 'Limited Edition', nome: 'Elio' },
+  { id: 43, cat: 'Limited Edition', nome: 'Yammie-Ja' },
+  { id: 44, cat: 'Limited Edition', nome: 'Gioia' },
+  { id: 45, cat: 'Limited Edition', nome: 'A Pork' },
+  { id: 46, cat: 'Limited Edition', nome: 'Primavera' },
+  { id: 47, cat: 'Limited Edition', nome: 'Supernova' },
+  { id: 48, cat: 'Limited Edition', nome: 'La Antò' },
+  { id: 202, cat: 'Focacce', nome: 'Balsamica' },
+  { id: 49, cat: 'Focacce', nome: 'Burrata' },
+  { id: 50, cat: 'Focacce', nome: 'Bruschetta' },
+  { id: 51, cat: 'Focacce', nome: 'Italia' },
+  { id: 52, cat: 'Focacce', nome: 'Prosciutto Crudo' },
+  { id: 53, cat: 'Focacce', nome: 'Speck' },
+  { id: 54, cat: 'Focacce', nome: 'Tropea' },
+  { id: 55, cat: 'Focacce', nome: 'Montebianco' },
+  { id: 56, cat: 'Calzoni', nome: 'Calzone della Casa' },
+  { id: 57, cat: 'Calzoni', nome: 'Calzone Doppio' },
+  { id: 58, cat: 'Calzoni', nome: 'Calzone Goloso' },
+  { id: 59, cat: 'Calzoni', nome: 'Calzone Gustoso' },
+  { id: 60, cat: 'Panuozzi', nome: 'U Pork' },
+  { id: 61, cat: 'Panuozzi', nome: 'Americano' },
+  { id: 62, cat: 'Panuozzi', nome: 'Balsamico' },
+  { id: 63, cat: 'Panuozzi', nome: 'Boscaiolo' },
+  { id: 64, cat: 'Panuozzi', nome: 'Calabrese' },
+  { id: 65, cat: 'Panuozzi', nome: 'Classico' },
+  { id: 66, cat: 'Panuozzi', nome: 'Estivo' },
+  { id: 67, cat: 'Panuozzi', nome: 'Fresco' },
+  { id: 68, cat: 'Panuozzi', nome: 'Hamburger' },
+  { id: 69, cat: 'Panuozzi', nome: 'Mediterraneo' },
+  { id: 70, cat: 'Panuozzi', nome: 'Porcaro' },
+  { id: 71, cat: 'Panuozzi', nome: 'Valdostano' },
+  { id: 72, cat: 'Panuozzi', nome: 'Vegetariano' },
+  { id: 73, cat: 'Hamburger', nome: 'Capo' },
+  { id: 74, cat: 'Hamburger', nome: 'Ciccio' },
+  { id: 75, cat: 'Hamburger', nome: 'Fanalino di Coda' },
+  { id: 76, cat: 'Hamburger', nome: 'Il Lordone' },
+  { id: 77, cat: 'Hamburger', nome: 'Ultra Pork Burger' },
+  { id: 78, cat: 'Hamburger', nome: 'Menu Panino' },
+  { id: 200, cat: 'Pane del Forno', nome: 'Filone Classico' },
+  { id: 201, cat: 'Pane del Forno', nome: 'Filone Integrale' },
+  { id: 79, cat: 'Farinata', nome: 'Classica' },
+  { id: 80, cat: 'Farinata', nome: 'con Burrata' },
+  { id: 81, cat: 'Farinata', nome: 'al Lardo' },
+  { id: 82, cat: 'Farinata', nome: 'ai Formaggi' },
+  { id: 83, cat: 'Farinata', nome: 'Cotto e Mozzarella' },
+  { id: 84, cat: 'Farinata', nome: 'Fontina e Soppressata' },
+  { id: 85, cat: 'Farinata', nome: 'Friarielli e Salsiccia' },
+  { id: 86, cat: 'Farinata', nome: 'Gorgo e Cipolla' },
+  { id: 87, cat: 'Farinata', nome: 'con Mortadella' },
+  { id: 88, cat: 'Farinata', nome: 'Scamorza e Salamino' },
+  { id: 89, cat: 'Farinata', nome: 'Fargherita' },
+  { id: 90, cat: 'Fritti', nome: 'Chiacchiere Semplici' },
+  { id: 91, cat: 'Fritti', nome: 'Chiacchiere al Crudo' },
+  { id: 92, cat: 'Fritti', nome: 'Chiacchiere al Sugo' },
+  { id: 93, cat: 'Fritti', nome: 'Chiacchiere con Burrata' },
+  { id: 94, cat: 'Fritti', nome: 'Chiacchiere Tris' },
+  { id: 95, cat: 'Fritti', nome: 'Crocchette di Patate' },
+  { id: 96, cat: 'Fritti', nome: "Olive all'Ascolana" },
+  { id: 97, cat: 'Fritti', nome: 'Nuggets di Pollo' },
+  { id: 98, cat: 'Fritti', nome: 'Panelle' },
+  { id: 99, cat: 'Fritti', nome: 'Patatine Fritte' },
+  { id: 100, cat: 'Fritti', nome: 'Scugnizzi Fritti' },
+  { id: 101, cat: 'Fritti', nome: 'Suppli Romani' },
+  { id: 102, cat: 'Dolci', nome: 'Cannoli Siciliani' },
+  { id: 103, cat: 'Dolci', nome: 'Cheesecake alla Fragola' },
+  { id: 104, cat: 'Dolci', nome: 'Chiacchiere con Zucchero' },
+  { id: 105, cat: 'Dolci', nome: 'Chiacchiere con Nutella' },
+  { id: 106, cat: 'Dolci', nome: 'Focaccia alla Nutella' },
+  { id: 107, cat: 'Dolci', nome: 'Profiterol' },
+  { id: 108, cat: 'Dolci', nome: 'Semifreddo al Cocco' },
+  { id: 109, cat: 'Dolci', nome: 'Sorbetto al Limone' },
+  { id: 110, cat: 'Dolci', nome: 'Tiramisu' },
+  { id: 111, cat: 'Dolci', nome: 'Tortino Ricotta e Cioccolato' },
+  { id: 112, cat: 'Dolci', nome: 'Tortino Ricotta e Pere' },
+  { id: 113, cat: 'Dolci', nome: 'Zuppa Inglese' },
+  { id: 114, cat: 'Bevande', nome: 'Acqua Naturale' },
+  { id: 115, cat: 'Bevande', nome: 'Acqua Frizzante' },
+  { id: 116, cat: 'Bevande', nome: 'Coca Cola' },
+  { id: 117, cat: 'Bevande', nome: 'Coca Cola Zero' },
+  { id: 118, cat: 'Bevande', nome: 'Fanta' },
+  { id: 119, cat: 'Bevande', nome: 'Sprite' },
+  { id: 120, cat: 'Bevande', nome: 'Chinotto' },
+  { id: 121, cat: 'Bevande', nome: 'Estathe al Limone' },
+  { id: 122, cat: 'Bevande', nome: 'Estathe alla Pesca' },
+  { id: 123, cat: 'Bevande', nome: 'Moretti Rossa 33cl' },
+  { id: 124, cat: 'Bevande', nome: 'Becks 33cl' },
+  { id: 125, cat: 'Bevande', nome: 'Ichnusa 33cl' },
+  { id: 126, cat: 'Bevande', nome: 'Menabrea 33cl' },
+  { id: 127, cat: 'Bevande', nome: 'Moretti Classica 66cl' },
+  { id: 128, cat: 'Bevande', nome: 'Ichnusa Non Filtrata 50cl' },
+  { id: 129, cat: 'Bevande', nome: 'Aperol Spritz' },
+  { id: 130, cat: 'Bevande', nome: 'Fontanafredda Rosso' },
+  { id: 131, cat: 'Bevande', nome: 'Fontanafredda Arneis' },
+  { id: 132, cat: 'Bevande', nome: 'Spumante Santero 958 Extra Dry' },
+];
+const AGGIUNTE_CUCINA = [
+  'Uovo', 'Würstel', 'Salsiccia', 'Bacon', 'Pomodorini', 'Funghi', 'Olive',
+  'Prosciutto cotto', 'Carciofi', 'Peperoni', 'Salamino', 'Brie', 'Fontina',
+  'Gorgonzola', 'Cipolla', 'Certosino', 'Zucchine', 'Melanzane', 'Friarielli',
+  'Grana', 'Soppressata', 'Scamorza', 'Acciughe', 'Capperi', 'Rinforzo mozzarella',
+  'Rinforzo salsa di pomodoro', 'Patatine fritte', 'Bufala', 'Crudo', 'Speck', 'Burrata',
+];
+
 export default function Cucina() {
   const [sbloccato, setSbloccato] = useState(false);
   const [passwordInserita, setPasswordInserita] = useState('');
@@ -81,6 +226,31 @@ export default function Cucina() {
   };
 
   const [conteggioOrdini, setConteggioOrdini] = useState({});
+  const [nonDisponibili, setNonDisponibili] = useState([]);
+  const [pannelloDisp, setPannelloDisp] = useState(false);
+  const [catDisp, setCatDisp] = useState('Pizze Rosse');
+
+  const caricaNonDisponibili = async () => {
+    const { data } = await supabase.from('prodotti_non_disponibili').select('id_prodotto');
+    if (data) setNonDisponibili(data.map(r => r.id_prodotto));
+  };
+
+  useEffect(() => {
+    caricaNonDisponibili();
+    const t = setInterval(caricaNonDisponibili, 30000);
+    return () => clearInterval(t);
+  }, []);
+
+  const toggleDisponibilita = async (idProdotto, nome) => {
+    const giaNon = nonDisponibili.includes(idProdotto);
+    if (giaNon) {
+      setNonDisponibili(prev => prev.filter(x => x !== idProdotto));
+      await supabase.from('prodotti_non_disponibili').delete().eq('id_prodotto', idProdotto);
+    } else {
+      setNonDisponibili(prev => [...prev, idProdotto]);
+      await supabase.from('prodotti_non_disponibili').insert([{ id_prodotto: idProdotto, nome }]);
+    }
+  };
 
   const carica = async () => {
     const { data, error } = await supabase
@@ -263,6 +433,12 @@ export default function Cucina() {
             onPress={attivaSuono}
           >
             <Text style={{ fontSize: 20 }}>{suonoAttivo ? '🔔' : '🔕'}</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[S.refreshBtn, { marginLeft: 8, backgroundColor: 'rgba(200,150,30,0.3)' }]}
+            onPress={() => setPannelloDisp(true)}
+          >
+            <Text style={{ fontSize: 20 }}>📦</Text>
           </TouchableOpacity>
         </View>
         {!suonoAttivo && (
@@ -494,6 +670,49 @@ export default function Cucina() {
           );
         })}
       </ScrollView>
+
+      {pannelloDisp && (
+        <div onClick={() => setPannelloDisp(false)} style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100dvh', background: 'rgba(0,0,0,0.7)', zIndex: 999999, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#1d0e02', width: '100%', maxWidth: 600, height: '88vh', borderTopLeftRadius: 22, borderTopRightRadius: 22, display: 'flex', flexDirection: 'column', border: '2px solid ' + C.oro, borderBottom: 'none' }}>
+            <div style={{ padding: '18px 20px 12px', borderBottom: '1px solid rgba(232,184,75,0.2)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: 900, color: C.crema }}>📦 Disponibilità</span>
+                <span onClick={() => setPannelloDisp(false)} style={{ fontSize: 26, color: C.grigio, cursor: 'pointer' }}>✕</span>
+              </div>
+              <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio, marginTop: 4 }}>Tocca per segnare esaurito/disponibile. I clienti non potranno ordinarli.</div>
+            </div>
+            <div style={{ display: 'flex', gap: 6, overflowX: 'auto', padding: '10px 16px', borderBottom: '1px solid rgba(232,184,75,0.15)' }}>
+              {['Pizze Rosse', 'Pizze Bianche', 'Pizze Speciali', 'Limited Edition', 'Focacce', 'Calzoni', 'Panuozzi', 'Hamburger', 'Farinata', 'Fritti', 'Dolci', 'Bevande', 'Pane del Forno', '🧀 Ingredienti'].map(c => (
+                <button key={c} onClick={() => setCatDisp(c)} style={{ whiteSpace: 'nowrap', padding: '8px 14px', borderRadius: 18, border: 'none', cursor: 'pointer', fontFamily: FONT_TESTO, fontSize: 13, fontWeight: 700, background: catDisp === c ? C.oro : 'rgba(255,255,255,0.08)', color: catDisp === c ? C.marrone : C.grigio }}>{c}</button>
+              ))}
+            </div>
+            <div style={{ overflowY: 'auto', padding: '12px 16px', flex: 1 }}>
+              {catDisp === '🧀 Ingredienti' ? (
+                AGGIUNTE_CUCINA.map(nome => {
+                  const idFinto = 10000 + AGGIUNTE_CUCINA.indexOf(nome);
+                  const esaurito = nonDisponibili.includes(idFinto);
+                  return (
+                    <div key={nome} onClick={() => toggleDisponibilita(idFinto, nome)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', marginBottom: 8, borderRadius: 12, cursor: 'pointer', background: esaurito ? 'rgba(192,57,43,0.2)' : 'rgba(255,255,255,0.05)', border: `2px solid ${esaurito ? '#C0392B' : 'rgba(255,255,255,0.08)'}` }}>
+                      <span style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: 600, color: esaurito ? '#FF9999' : C.crema, textDecoration: esaurito ? 'line-through' : 'none' }}>{nome}</span>
+                      <span style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: 800, color: esaurito ? '#FF9999' : '#7FD17F' }}>{esaurito ? '✕ Esaurito' : '✓ Disponibile'}</span>
+                    </div>
+                  );
+                })
+              ) : (
+                PRODOTTI.filter(p => p.cat === catDisp).map(p => {
+                  const esaurito = nonDisponibili.includes(p.id);
+                  return (
+                    <div key={p.id} onClick={() => toggleDisponibilita(p.id, p.nome)} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '13px 16px', marginBottom: 8, borderRadius: 12, cursor: 'pointer', background: esaurito ? 'rgba(192,57,43,0.2)' : 'rgba(255,255,255,0.05)', border: `2px solid ${esaurito ? '#C0392B' : 'rgba(255,255,255,0.08)'}` }}>
+                      <span style={{ fontFamily: FONT_TESTO, fontSize: 15, fontWeight: 600, color: esaurito ? '#FF9999' : C.crema, textDecoration: esaurito ? 'line-through' : 'none' }}>{p.nome}</span>
+                      <span style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: 800, color: esaurito ? '#FF9999' : '#7FD17F' }}>{esaurito ? '✕ Esaurito' : '✓ Disponibile'}</span>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </View>
   );
 }

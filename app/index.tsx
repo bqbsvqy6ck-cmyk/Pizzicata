@@ -46,12 +46,18 @@ const distanzaKm = (lat1, lng1, lat2, lng2) => {
 // Verifica un indirizzo: ritorna { ok, distanza, errore }
 const verificaIndirizzo = async (indirizzo) => {
   try {
-    const query = encodeURIComponent(indirizzo + ', Torino, Italia');
-    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GOOGLE_MAPS_KEY}`;
+    const query = encodeURIComponent(indirizzo + ', Italia');
+    const bounds = '44.95,7.50|45.15,7.80';
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&region=it&bounds=${bounds}&key=${GOOGLE_MAPS_KEY}`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.status !== 'OK' || !data.results || data.results.length === 0) {
       return { ok: false, errore: 'Indirizzo non trovato. Controlla di averlo scritto bene (via e numero civico).' };
+    }
+    const componenti = data.results[0].address_components || [];
+    const haNumeroCivico = componenti.some(c => c.types.includes('street_number'));
+    if (!haNumeroCivico) {
+      return { ok: false, errore: 'Aggiungi il numero civico al tuo indirizzo (es. "Corso Giambone 8").' };
     }
     const loc = data.results[0].geometry.location;
     const dist = distanzaKm(PIZZERIA_LAT, PIZZERIA_LNG, loc.lat, loc.lng);
@@ -63,6 +69,88 @@ const verificaIndirizzo = async (indirizzo) => {
     return { ok: false, errore: 'Errore nella verifica. Riprova.' };
   }
 };
+// Campo indirizzo con autocompletamento Google Places
+function CampoIndirizzoAuto({ valore, onCambia, onSeleziona }) {
+  const [suggerimenti, setSuggerimenti] = useState([]);
+  const [mostraSugg, setMostraSugg] = useState(false);
+  const [caricando, setCaricando] = useState(false);
+  const timerRef = useRef(null);
+
+  const cercaSuggerimenti = (testo) => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (!testo || testo.trim().length < 3) { setSuggerimenti([]); return; }
+    timerRef.current = setTimeout(async () => {
+      setCaricando(true);
+      try {
+        const res = await fetch('https://places.googleapis.com/v1/places:autocomplete', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': GOOGLE_MAPS_KEY,
+          },
+          body: JSON.stringify({
+            input: testo,
+            languageCode: 'it',
+            regionCode: 'IT',
+            locationRestriction: {
+              rectangle: {
+                low: { latitude: PIZZERIA_LAT - 0.055, longitude: PIZZERIA_LNG - 0.075 },
+                high: { latitude: PIZZERIA_LAT + 0.055, longitude: PIZZERIA_LNG + 0.075 },
+              },
+            },
+          }),
+        });
+        const data = await res.json();
+        const suggGrezzi = (data.suggestions || [])
+          .filter(s => s.placePrediction)
+          .map(s => ({
+            id: s.placePrediction.placeId,
+            testo: s.placePrediction.text.text,
+          }));
+        // Verifica distanza per ognuno, tieni solo entro 5km
+        const suggFiltrati = [];
+        for (const s of suggGrezzi) {
+          const check = await verificaIndirizzo(s.testo);
+          if (check.ok) suggFiltrati.push(s);
+        }
+        setSuggerimenti(suggFiltrati);
+        setMostraSugg(true);
+      } catch (e) {
+        setSuggerimenti([]);
+      }
+      setCaricando(false);
+    }, 400);
+  };
+
+  const scegli = (sugg) => {
+    onCambia(sugg.testo);
+    setMostraSugg(false);
+    setSuggerimenti([]);
+    onSeleziona(sugg.testo);
+  };
+
+  return (
+    <div style={{ position: 'relative' }}>
+      <input
+        style={inputStyle}
+        placeholder="Inizia a scrivere: via e civico..."
+        value={valore}
+        onChange={(e) => { onCambia(e.target.value); cercaSuggerimenti(e.target.value); }}
+        onFocus={() => { if (suggerimenti.length > 0) setMostraSugg(true); }}
+      />
+      {mostraSugg && suggerimenti.length > 0 && (
+        <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1.5px solid #E8D5B0', borderRadius: 10, marginTop: 4, zIndex: 99999, maxHeight: 220, overflowY: 'auto', boxShadow: '0 6px 18px rgba(60,26,0,0.15)' }}>
+          {suggerimenti.map(s => (
+            <div key={s.id} onClick={() => scegli(s)} style={{ padding: '11px 14px', cursor: 'pointer', borderBottom: '1px solid #F0E8D8', fontSize: 14, color: '#3D1A00' }}>
+              📍 {s.testo}
+            </div>
+          ))}
+        </div>
+      )}
+      {caricando && <div style={{ fontSize: 11, color: '#8B7355', marginTop: 4 }}>Cerco indirizzi...</div>}
+    </div>
+  );
+}
 
 const VIDEO_DAL_FORNO = [
   { piattaforma: 'instagram', url: 'https://www.instagram.com/reel/C9SNNnHt5Tf/', titolo: 'Dietro le quinte' },
@@ -1019,14 +1107,18 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
           )}
 
           {tipoOrdine === 'domicilio' && (
-            <View style={S.formBox}>
+            <View style={[S.formBox, { overflow: 'visible', zIndex: 100, position: 'relative' }]}>
               <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA *</Text>
-              <input style={inputStyle} placeholder="Via, numero civico..." value={indirizzo} onChange={(e) => setIndirizzo(e.target.value)} />
-              <Text style={{ fontSize: 10, color: C.grigio, marginTop: 6, fontStyle: 'italic' }}>Consegniamo entro 5km da Corso Giambone 8/b</Text>
+              <CampoIndirizzoAuto
+                valore={indirizzo}
+                onCambia={setIndirizzo}
+                onSeleziona={(val) => setIndirizzo(val)}
+              />
+              <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6, fontStyle: 'italic' }}>Scegli l'indirizzo dai suggerimenti. Consegniamo entro 5km da Corso Giambone 8/b.</Text>
             </View>
           )}
 
-          <View style={S.formBox}>
+          <View style={[S.formBox, { zIndex: 1 }]}>
             <Text style={S.formLabel}>GIORNO</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}>
               <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -2135,6 +2227,24 @@ export default function App() {
     return () => { listener.subscription.unsubscribe(); };
   }, []);
   const [tab, setTab] = useState('home');
+  const ORDINE_TAB = ['home', 'menu', 'offers', 'cart', 'profilo'];
+  const touchStartX = useRef(0);
+  const touchStartY = useRef(0);
+
+  const onTouchStart = (e) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchStartY.current = e.touches[0].clientY;
+  };
+  const onTouchEnd = (e) => {
+    const dx = e.changedTouches[0].clientX - touchStartX.current;
+    const dy = e.changedTouches[0].clientY - touchStartY.current;
+    // solo swipe orizzontale ampio (evita conflitto con scroll verticale)
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.5) return;
+    const idx = ORDINE_TAB.indexOf(tab);
+    if (idx === -1) return;
+    if (dx < 0 && idx < ORDINE_TAB.length - 1) setTab(ORDINE_TAB[idx + 1]);
+    if (dx > 0 && idx > 0) setTab(ORDINE_TAB[idx - 1]);
+  };
   const [cat, setCat] = useState('Pizze Rosse');
   const [cart, setCart] = useState([]);
   const [ordered, setOrdered] = useState(false);
@@ -2541,9 +2651,11 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      <View style={{ flex: 1 }}>
-        {screens[tab]}
-      </View>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }} onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+        <View style={{ flex: 1 }}>
+          {screens[tab]}
+        </View>
+      </div>
 
       {ruotaVisibile && (
         <RuotaFortuna girando={ruotaGirando} premio={ruotaPremio} rotazione={ruotaRotazione} potenziata={ruotaPotenziata} onGira={giraRuota} onChiudi={chiudiRuota} />

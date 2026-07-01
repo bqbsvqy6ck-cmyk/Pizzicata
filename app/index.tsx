@@ -26,6 +26,43 @@ const C = {
 };
 const FONT_TITOLO = "'Fraunces', Georgia, serif";
 const FONT_TESTO = "'Inter', -apple-system, sans-serif";
+// Verifica indirizzi entro 5km da Corso Giambone 8/b
+const GOOGLE_MAPS_KEY = 'AIzaSyCKktQK5H1z9IIBh4vWbRPqcNq9AVyp1rE';
+const PIZZERIA_LAT = 45.032085;
+const PIZZERIA_LNG = 7.647667;
+const RAGGIO_CONSEGNA_KM = 5;
+
+// Calcola distanza tra due punti (formula di Haversine)
+const distanzaKm = (lat1, lng1, lat2, lng2) => {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLng/2) * Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+};
+
+// Verifica un indirizzo: ritorna { ok, distanza, errore }
+const verificaIndirizzo = async (indirizzo) => {
+  try {
+    const query = encodeURIComponent(indirizzo + ', Torino, Italia');
+    const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${query}&key=${GOOGLE_MAPS_KEY}`;
+    const res = await fetch(url);
+    const data = await res.json();
+    if (data.status !== 'OK' || !data.results || data.results.length === 0) {
+      return { ok: false, errore: 'Indirizzo non trovato. Controlla di averlo scritto bene (via e numero civico).' };
+    }
+    const loc = data.results[0].geometry.location;
+    const dist = distanzaKm(PIZZERIA_LAT, PIZZERIA_LNG, loc.lat, loc.lng);
+    if (dist > RAGGIO_CONSEGNA_KM) {
+      return { ok: false, distanza: dist, errore: `Ci dispiace, il tuo indirizzo è a ${dist.toFixed(1)}km da noi. Consegniamo solo entro ${RAGGIO_CONSEGNA_KM}km.` };
+    }
+    return { ok: true, distanza: dist };
+  } catch (e) {
+    return { ok: false, errore: 'Errore nella verifica. Riprova.' };
+  }
+};
 
 const VIDEO_DAL_FORNO = [
   { piattaforma: 'instagram', url: 'https://www.instagram.com/reel/C9SNNnHt5Tf/', titolo: 'Dietro le quinte' },
@@ -761,6 +798,7 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const [giornoSelezionato, setGiornoSelezionato] = useState(0);
   const [errore, setErrore] = useState('');
   const [prodRimozione, setProdRimozione] = useState(null);
+  const [verificandoIndirizzo, setVerificandoIndirizzo] = useState(false);
 
   const haPane = cart.some(i => i.id >= 200);
   const calendario = getCalendario().filter((_, i) => !haPane || i > 0);
@@ -801,9 +839,16 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const addQty = (cartKey) => setCart(prev => prev.map(c => c.cartKey === cartKey ? { ...c, qty: c.qty + 1 } : c));
   const removeQty = (cartKey) => setCart(prev => prev.map(c => c.cartKey === cartKey ? { ...c, qty: c.qty - 1 } : c).filter(c => c.qty > 0));
 
-  const doOrder = () => {
+  const doOrder = async async () => {
     if (combo) { setErrore('Hai una Combo Famiglia non confermata. Completala e premi "Conferma combo", oppure annullala dal menù.'); return; }
     if (tipoOrdine === 'domicilio' && !indirizzo.trim()) { setErrore('Inserisci il tuo indirizzo!'); return; }
+    if (tipoOrdine === 'domicilio') {
+      setErrore('');
+      setVerificandoIndirizzo(true);
+      const check = await verificaIndirizzo(indirizzo.trim());
+      setVerificandoIndirizzo(false);
+      if (!check.ok) { setErrore(check.errore); return; }
+    }
     // Avviso bibita omaggio non selezionata
     const haPremioBibita = utente.premio === 'bibita' || utente.premio === 'bibita2';
     const haBibitaInCarrello = cart.some(i => i.id >= 114 && i.id <= 122);

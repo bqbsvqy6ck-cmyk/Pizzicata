@@ -1395,8 +1395,7 @@ function RotellaGira({ size = 46 }) {
     <div style={{ width: size, height: size, borderRadius: '50%', flexShrink: 0, background: 'conic-gradient(#C8961E 0deg 60deg, #8B1A1A 60deg 120deg, #2C5A2E 120deg 180deg, #C8961E 180deg 240deg, #8B1A1A 240deg 300deg, #2C5A2E 300deg 360deg)', border: '3px solid #E8B84B', boxShadow: '0 0 16px rgba(232,184,75,0.6)', transform: `rotate(${deg}deg)` }} />
   );
 }
-function BottoneSegnalaBug({ utente, supabase }) {
-  const [aperto, setAperto] = useState(false);
+function FinestraBug({ utente, supabase, onChiudi }) {
   const [testo, setTesto] = useState('');
   const [inviato, setInviato] = useState(false);
   const [inviando, setInviando] = useState(false);
@@ -1412,40 +1411,40 @@ function BottoneSegnalaBug({ utente, supabase }) {
     setInviando(false);
     if (error) { alert('Errore nell\'invio: ' + error.message); return; }
     setInviato(true); setTesto('');
-    setTimeout(() => { setInviato(false); setAperto(false); }, 2000);
+    setTimeout(() => { onChiudi(); }, 2000);
   };
 
   return (
-    <>
-      <TouchableOpacity onPress={() => setAperto(true)} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginTop: 8, marginBottom: 8, borderWidth: 1, borderColor: '#E8D5B0' }}>
-        <Text style={{ fontSize: 18 }}>🐛</Text>
-        <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: C.grigio }}>Segnala un problema</Text>
-      </TouchableOpacity>
-      {aperto && (
-        <div onClick={() => setAperto(false)} style={{ position: 'fixed', inset: 0, height: '100vh', background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, boxSizing: 'border-box' }}>
-          <div onClick={(e) => e.stopPropagation()} style={{ background: '#F7EFDF', borderRadius: 22, padding: 24, maxWidth: 400, width: '100%' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span style={{ fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: 900, color: C.marrone }}>🐛 Segnala un problema</span>
-              <span onClick={() => setAperto(false)} style={{ fontSize: 24, color: C.grigio, cursor: 'pointer' }}>✕</span>
-            </div>
-            {inviato ? (
-              <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                <div style={{ fontSize: 40 }}>✅</div>
-                <div style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.verde, fontWeight: 700, marginTop: 8 }}>Grazie! Segnalazione inviata.</div>
-              </div>
-            ) : (
-              <>
-                <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 12 }}>Hai trovato un errore o qualcosa non funziona? Scrivicelo, ci aiuterai a migliorare l'app!</div>
-                <textarea value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Descrivi il problema..." style={{ ...textareaStyle, minHeight: 100 }} />
-                <button onClick={invia} disabled={inviando} style={{ width: '100%', background: 'linear-gradient(145deg, #A02020, #7E1414)', color: 'white', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FONT_TESTO, marginTop: 12 }}>
-                  {inviando ? 'Invio...' : 'Invia segnalazione'}
-                </button>
-              </>
-            )}
-          </div>
+    <div onClick={onChiudi} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#F7EFDF', borderRadius: 22, padding: 24, maxWidth: 400, width: '100%' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+          <span style={{ fontFamily: FONT_TITOLO, fontSize: 20, fontWeight: 900, color: C.marrone }}>🐛 Segnala un problema</span>
+          <span onClick={onChiudi} style={{ fontSize: 24, color: C.grigio, cursor: 'pointer' }}>✕</span>
         </div>
-      )}
-    </>
+        {inviato ? (
+          <div style={{ textAlign: 'center', padding: '20px 0' }}>
+            <div style={{ fontSize: 40 }}>✅</div>
+            <div style={{ fontFamily: FONT_TESTO, fontSize: 15, color: C.verde, fontWeight: 700, marginTop: 8 }}>Grazie! Segnalazione inviata.</div>
+          </div>
+        ) : (
+          <>
+            <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginBottom: 12 }}>Hai trovato un errore o qualcosa non funziona? Scrivicelo, ci aiuterai a migliorare l'app!</div>
+            <textarea value={testo} onChange={(e) => setTesto(e.target.value)} placeholder="Descrivi il problema..." style={{ ...textareaStyle, minHeight: 100 }} />
+            <button onClick={invia} disabled={inviando} style={{ width: '100%', background: 'linear-gradient(145deg, #A02020, #7E1414)', color: 'white', border: 'none', borderRadius: 14, padding: 15, fontSize: 15, fontWeight: 800, cursor: 'pointer', fontFamily: FONT_TESTO, marginTop: 12 }}>
+              {inviando ? 'Invio...' : 'Invia segnalazione'}
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+function BottoneSegnalaBug({ onApri }) {
+  return (
+    <TouchableOpacity onPress={onApri} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: '#FBF4E6', borderRadius: 14, padding: 14, marginTop: 8, marginBottom: 8, borderWidth: 1, borderColor: '#E8D5B0' }}>
+      <Text style={{ fontSize: 18 }}>🐛</Text>
+      <Text style={{ fontFamily: FONT_TESTO, fontSize: 13, fontWeight: '700', color: C.grigio }}>Segnala un problema</Text>
+    </TouchableOpacity>
   );
 }
 function SecLabel({ testo }) {
@@ -1737,7 +1736,7 @@ function MenuScreen({ cat, setCat, combo, combosConfermate, cart, confermaCombo,
     </View>
   );
 }
-function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
+function ProfiloScreen({ utente, setUtente, setTab, supabase, onApriBug }) {
   const [nome, setNome] = useState(utente.nome || '');
   const [cognome, setCognome] = useState(utente.cognome || '');
   const [email, setEmail] = useState(utente.email || '');
@@ -1854,7 +1853,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
         </View>
         <Text style={{ fontSize: 18, color: C.oro }}>→</Text>
       </TouchableOpacity>
-      <BottoneSegnalaBug utente={utente} supabase={supabase} />
+      <BottoneSegnalaBug onApri={onApriBug} />
 
       <TouchableOpacity onPress={async () => { await supabase.auth.signOut(); setUtente(null); setTab('home'); }} style={{ marginTop: 16, marginBottom: 30, alignItems: 'center', padding: 14 }}>
         <Text style={{ fontFamily: FONT_TESTO, fontSize: 14, color: C.rosso, fontWeight: '700' }}>Esci dall'account</Text>
@@ -1878,7 +1877,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
     </ScrollView>
   );
 }
-  function Home({ utente, apertura, traffico, oraStr, setTab, setCat, setMostraVocale, supabase }) {
+  function Home({ utente, apertura, traffico, oraStr, setTab, setCat, setMostraVocale, supabase, onApriBug }) {
   return (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
       <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
@@ -2046,7 +2045,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase }) {
           </svg>
         </TouchableOpacity>
       </View>
-      <BottoneSegnalaBug utente={utente} supabase={supabase} />
+      <BottoneSegnalaBug onApri={onApriBug} />
       <View style={{ height: 20 }} />
     </ScrollView>
   );
@@ -2117,6 +2116,7 @@ export default function App() {
     return () => clearInterval(t);
   }, []);
   const [mostraVocale, setMostraVocale] = useState(false);
+  const [mostraBug, setMostraBug] = useState(false);
   const [precompilaVocale, setPrecompilaVocale] = useState(null);
   const [mancia, setMancia] = useState(0);
   const [manciaConfermata, setManciaConfermata] = useState(false);
@@ -2456,10 +2456,10 @@ export default function App() {
   };
 
   const screens = {
-    home: <Home utente={utente} apertura={apertura} traffico={traffico} oraStr={oraStr} setTab={setTab} setCat={setCat} setMostraVocale={setMostraVocale} supabase={supabase} />,
+    home: <Home utente={utente} apertura={apertura} traffico={traffico} oraStr={oraStr} setTab={setTab} setCat={setCat} setMostraVocale={setMostraVocale} supabase={supabase} onApriBug={() => setMostraBug(true)} />,
     menu: <MenuScreen cat={cat} setCat={setCat} combo={combo} combosConfermate={combosConfermate} cart={cart} confermaCombo={confermaCombo} add={add} setProdottoAggiunte={setProdottoAggiunte} esauriti={esauriti} />,
     offers: <Offers />,
-    profilo: <ProfiloScreen utente={utente} setUtente={setUtente} setTab={setTab} supabase={supabase} />,
+    profilo: <ProfiloScreen utente={utente} setUtente={setUtente} setTab={setTab} supabase={supabase} onApriBug={() => setMostraBug(true)} />,
     ordini: <Ordini />,
     cart: (
       <CartScreen
@@ -2508,6 +2508,9 @@ export default function App() {
       )}
       {mostraVocale && (
         <OrdineVocale onChiudi={() => setMostraVocale(false)} onConferma={confermaVocale} />
+      )}
+      {mostraBug && (
+        <FinestraBug utente={utente} supabase={supabase} onChiudi={() => setMostraBug(false)} />
       )}
       {mostraOrari && (
         <div onClick={() => setMostraOrari(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>

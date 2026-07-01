@@ -591,7 +591,11 @@ export default function Cucina() {
                           <Text style={S.itemName}>{item.name}</Text>
                           {item.integrale ? <Text style={S.itemExtra}>+ Impasto integrale</Text> : null}
                           {item.aggiunte && item.aggiunte.length > 0 ? (
-                            <Text style={S.itemExtra}>+ {item.aggiunte.join(', ')}</Text>
+                            <Text style={S.itemExtra}>+ {(() => {
+                              const conteggio = {};
+                              item.aggiunte.forEach(a => { conteggio[a] = (conteggio[a] || 0) + 1; });
+                              return Object.entries(conteggio).map(([nome, q]) => q > 1 ? `${nome} ×${q}` : nome).join(', ');
+                            })()}</Text>
                           ) : null}
                           {item.rimozioni && item.rimozioni.length > 0 ? (
                             <Text style={[S.itemExtra, { color: '#FF9999' }]}>− senza {item.rimozioni.join(', ')}</Text>

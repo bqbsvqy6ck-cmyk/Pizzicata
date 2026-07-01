@@ -101,19 +101,13 @@ function CampoIndirizzoAuto({ valore, onCambia, onSeleziona }) {
           }),
         });
         const data = await res.json();
-        const suggGrezzi = (data.suggestions || [])
+        const sugg = (data.suggestions || [])
           .filter(s => s.placePrediction)
           .map(s => ({
             id: s.placePrediction.placeId,
             testo: s.placePrediction.text.text,
           }));
-        // Verifica distanza per ognuno, tieni solo entro 5km
-        const suggFiltrati = [];
-        for (const s of suggGrezzi) {
-          const check = await verificaIndirizzo(s.testo);
-          if (check.ok) suggFiltrati.push(s);
-        }
-        setSuggerimenti(suggFiltrati);
+        setSuggerimenti(sugg);
         setMostraSugg(true);
       } catch (e) {
         setSuggerimenti([]);
@@ -122,11 +116,20 @@ function CampoIndirizzoAuto({ valore, onCambia, onSeleziona }) {
     }, 400);
   };
 
-  const scegli = (sugg) => {
+  const [esitoVerifica, setEsitoVerifica] = useState(null);
+  const scegli = async (sugg) => {
     onCambia(sugg.testo);
     setMostraSugg(false);
     setSuggerimenti([]);
-    onSeleziona(sugg.testo);
+    setEsitoVerifica({ stato: 'verifica' });
+    const check = await verificaIndirizzo(sugg.testo);
+    if (check.ok) {
+      setEsitoVerifica({ stato: 'ok', distanza: check.distanza });
+      onSeleziona(sugg.testo, true);
+    } else {
+      setEsitoVerifica({ stato: 'errore', messaggio: check.errore });
+      onSeleziona(sugg.testo, false);
+    }
   };
 
   return (
@@ -135,7 +138,7 @@ function CampoIndirizzoAuto({ valore, onCambia, onSeleziona }) {
         style={inputStyle}
         placeholder="Inizia a scrivere: via e civico..."
         value={valore}
-        onChange={(e) => { onCambia(e.target.value); cercaSuggerimenti(e.target.value); }}
+        onChange={(e) => { onCambia(e.target.value); cercaSuggerimenti(e.target.value); setEsitoVerifica(null); }}
         onFocus={() => { if (suggerimenti.length > 0) setMostraSugg(true); }}
       />
       {mostraSugg && suggerimenti.length > 0 && (
@@ -148,6 +151,15 @@ function CampoIndirizzoAuto({ valore, onCambia, onSeleziona }) {
         </div>
       )}
       {caricando && <div style={{ fontSize: 11, color: '#8B7355', marginTop: 4 }}>Cerco indirizzi...</div>}
+      {esitoVerifica && esitoVerifica.stato === 'verifica' && (
+        <div style={{ fontSize: 12, color: '#8B7355', marginTop: 6, fontWeight: 600 }}>📍 Verifico la distanza...</div>
+      )}
+      {esitoVerifica && esitoVerifica.stato === 'ok' && (
+        <div style={{ fontSize: 12, color: '#2C7A2C', marginTop: 6, fontWeight: 700, background: '#E8F5E8', padding: '8px 12px', borderRadius: 10 }}>✓ Indirizzo nella zona di consegna ({esitoVerifica.distanza.toFixed(1)}km)</div>
+      )}
+      {esitoVerifica && esitoVerifica.stato === 'errore' && (
+        <div style={{ fontSize: 12, color: '#C0392B', marginTop: 6, fontWeight: 700, background: '#FBEAE8', padding: '8px 12px', borderRadius: 10 }}>✕ {esitoVerifica.messaggio}</div>
+      )}
     </div>
   );
 }
@@ -887,6 +899,7 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
   const [errore, setErrore] = useState('');
   const [prodRimozione, setProdRimozione] = useState(null);
   const [verificandoIndirizzo, setVerificandoIndirizzo] = useState(false);
+  const [indirizzoValido, setIndirizzoValido] = useState(null);
 
   const haPane = cart.some(i => i.id >= 200);
   const calendario = getCalendario().filter((_, i) => !haPane || i > 0);
@@ -1111,8 +1124,8 @@ function CartScreen({ cart, setCart, cartTotal, cartTotalRaw, scontoCombo, scont
               <Text style={S.formLabel}>INDIRIZZO DI CONSEGNA *</Text>
               <CampoIndirizzoAuto
                 valore={indirizzo}
-                onCambia={setIndirizzo}
-                onSeleziona={(val) => setIndirizzo(val)}
+                onCambia={(val) => { setIndirizzo(val); setIndirizzoValido(null); }}
+                onSeleziona={(val, valido) => { setIndirizzo(val); setIndirizzoValido(valido); }}
               />
               <Text style={{ fontSize: 11, color: C.grigio, marginTop: 6, fontStyle: 'italic' }}>Scegli l'indirizzo dai suggerimenti. Consegniamo entro 5km da Corso Giambone 8/b.</Text>
             </View>
@@ -2014,7 +2027,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase, onApriBug }) {
     </ScrollView>
   );
 }
-  function Home({ utente, apertura, traffico, oraStr, setTab, setCat, setMostraVocale, supabase, onApriBug }) {
+  function Home({ utente, apertura, traffico, oraStr, setTab, setCat, setMostraVocale, supabase, onApriBug, onApriChiama }) {
   return (
     <ScrollView style={S.scroll} showsVerticalScrollIndicator={false}>
       <TouchableOpacity style={S.profiloMini} activeOpacity={0.85} onPress={() => setTab('profilo')}>
@@ -2160,7 +2173,7 @@ function ProfiloScreen({ utente, setUtente, setTab, supabase, onApriBug }) {
           <Text style={S.tileTitleNew}>Dove siamo</Text>
           <Text style={S.tileValNew}>C.so Giambone 8/b{'\n'}Torino</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={() => { const scelta = window.confirm('Chiama 331 5695959?\n\nOK = 331 5695959\nAnnulla = 011 0362310'); window.location.href = scelta ? 'tel:3315695959' : 'tel:0110362310'; }}>
+        <TouchableOpacity style={[S.tileNew, { background: 'linear-gradient(160deg, #fff, #FBF3E4)' }]} activeOpacity={0.7} onPress={onApriChiama}>
           <View style={[S.tileIconCircle, { background: 'radial-gradient(circle at 30% 30%, #fff, #F2E8D5)' }]}><Text style={{ fontSize: 17 }}>📞</Text></View>
           <Text style={S.tileTitleNew}>Telefono</Text>
           <Text style={S.tileValNew}>331 5695959{'\n'}011 0362310</Text>
@@ -2272,6 +2285,7 @@ export default function App() {
   }, []);
   const [mostraVocale, setMostraVocale] = useState(false);
   const [mostraBug, setMostraBug] = useState(false);
+  const [mostraChiama, setMostraChiama] = useState(false);
   const [precompilaVocale, setPrecompilaVocale] = useState(null);
   const [mancia, setMancia] = useState(0);
   const [manciaConfermata, setManciaConfermata] = useState(false);
@@ -2611,7 +2625,7 @@ export default function App() {
   };
 
   const screens = {
-    home: <Home utente={utente} apertura={apertura} traffico={traffico} oraStr={oraStr} setTab={setTab} setCat={setCat} setMostraVocale={setMostraVocale} supabase={supabase} onApriBug={() => setMostraBug(true)} />,
+    home: <Home utente={utente} apertura={apertura} traffico={traffico} oraStr={oraStr} setTab={setTab} setCat={setCat} setMostraVocale={setMostraVocale} supabase={supabase} onApriBug={() => setMostraBug(true)} onApriChiama={() => setMostraChiama(true)} />,
     menu: <MenuScreen cat={cat} setCat={setCat} combo={combo} combosConfermate={combosConfermate} cart={cart} confermaCombo={confermaCombo} add={add} setProdottoAggiunte={setProdottoAggiunte} esauriti={esauriti} />,
     offers: <Offers />,
     profilo: <ProfiloScreen utente={utente} setUtente={setUtente} setTab={setTab} supabase={supabase} onApriBug={() => setMostraBug(true)} />,
@@ -2668,6 +2682,34 @@ export default function App() {
       )}
       {mostraBug && (
         <FinestraBug utente={utente} supabase={supabase} onChiudi={() => setMostraBug(false)} />
+      )}
+      {mostraChiama && (
+        <div onClick={() => setMostraChiama(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#F7EFDF', borderRadius: 24, padding: 24, maxWidth: 360, width: '100%', boxShadow: '0 10px 40px rgba(0,0,0,0.3)' }}>
+            <div style={{ textAlign: 'center', marginBottom: 20 }}>
+              <div style={{ fontSize: 40, marginBottom: 8 }}>📞</div>
+              <div style={{ fontFamily: FONT_TITOLO, fontSize: 22, fontWeight: 900, color: C.marrone }}>Chiamaci</div>
+              <div style={{ fontFamily: FONT_TESTO, fontSize: 13, color: C.grigio, marginTop: 4 }}>Scegli il numero da chiamare</div>
+            </div>
+            <a href="tel:3315695959" style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', borderRadius: 16, padding: 16, marginBottom: 12, textDecoration: 'none', border: '2px solid #E8D5B0' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 22, background: 'linear-gradient(145deg, #A02020, #7E1414)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>📱</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 17, fontWeight: 800, color: C.marrone }}>331 5695959</div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Cellulare</div>
+              </div>
+              <span style={{ fontSize: 18, color: C.oro }}>→</span>
+            </a>
+            <a href="tel:0110362310" style={{ display: 'flex', alignItems: 'center', gap: 14, background: '#fff', borderRadius: 16, padding: 16, marginBottom: 16, textDecoration: 'none', border: '2px solid #E8D5B0' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 22, background: 'linear-gradient(145deg, #2C8A3D, #1c6b29)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>☎️</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 17, fontWeight: 800, color: C.marrone }}>011 0362310</div>
+                <div style={{ fontFamily: FONT_TESTO, fontSize: 12, color: C.grigio }}>Fisso</div>
+              </div>
+              <span style={{ fontSize: 18, color: C.oro }}>→</span>
+            </a>
+            <button onClick={() => setMostraChiama(false)} style={{ width: '100%', background: 'transparent', color: C.grigio, border: 'none', padding: 12, fontSize: 14, fontWeight: 700, cursor: 'pointer', fontFamily: FONT_TESTO }}>Annulla</button>
+          </div>
+        </div>
       )}
       {mostraOrari && (
         <div onClick={() => setMostraOrari(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 99999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
